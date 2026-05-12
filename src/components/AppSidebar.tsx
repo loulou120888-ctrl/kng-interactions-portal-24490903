@@ -1,13 +1,18 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
-  Users,
+  Calendar,
+  Music,
   ClipboardList,
-  Search,
-  AlertTriangle,
-  Activity,
+  Trophy,
+  Gift,
+  Megaphone,
+  Image as ImageIcon,
+  Users,
+  Archive,
   Shield,
   LogOut,
+  Crown,
 } from "lucide-react";
 import {
   Sidebar,
@@ -24,32 +29,34 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ROLE_LABEL } from "@/lib/portal";
 
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Events & Parties", url: "/schedule/events", icon: Calendar },
+  { title: "Entertainment", url: "/schedule/entertainment", icon: Music },
   { title: "Interactions", url: "/interactions", icon: ClipboardList },
-  { title: "Search", url: "/search", icon: Search },
-  { title: "Activity", url: "/activity", icon: Activity },
-  { title: "Staff", url: "/staff", icon: Users },
-  { title: "Warnings", url: "/warnings", icon: AlertTriangle },
+  { title: "Leaderboard", url: "/leaderboard", icon: Trophy },
+  { title: "Announcements", url: "/announcements", icon: Megaphone },
+  { title: "Hall of Fame", url: "/hall", icon: ImageIcon },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, isAuxPlus, isManager, topRole, signOut } = useAuth();
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
         <div className="flex items-center gap-2">
           <div className="grid h-9 w-9 place-items-center rounded-xl bg-[image:var(--gradient-primary)] shadow-[var(--shadow-glow)]">
-            <Shield className="h-5 w-5 text-primary-foreground" />
+            <Crown className="h-5 w-5 text-primary-foreground" />
           </div>
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="text-sm font-semibold tracking-tight">MDT Portal</span>
+              <span className="text-sm font-semibold tracking-tight">KNG Portal</span>
               <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
                 Interactions
               </span>
@@ -77,19 +84,33 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {isAdmin && (
+        {isAuxPlus && (
           <SidebarGroup>
-            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={path === "/admin"} tooltip="Admin">
-                    <Link to="/admin">
-                      <Shield className="h-4 w-4" />
-                      <span>Permissions</span>
-                    </Link>
+                  <SidebarMenuButton asChild isActive={path === "/comp"} tooltip="Comp Queue">
+                    <Link to="/comp"><Gift className="h-4 w-4" /><span>Comp Queue</span></Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={path === "/staff"} tooltip="Posters & Staff">
+                    <Link to="/staff"><Users className="h-4 w-4" /><span>Posters / Staff</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={path === "/admin"} tooltip="Admin">
+                    <Link to="/admin"><Shield className="h-4 w-4" /><span>Codes & Prizes</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                {isManager && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={path === "/archives"} tooltip="Archives">
+                      <Link to="/archives"><Archive className="h-4 w-4" /><span>Archives</span></Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -108,7 +129,7 @@ export function AppSidebar() {
               <div className="flex-1 min-w-0">
                 <p className="truncate text-xs font-medium">{user?.email}</p>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  {isAdmin ? "Administrator" : "Officer"}
+                  {ROLE_LABEL[topRole]}
                 </p>
               </div>
               <button
