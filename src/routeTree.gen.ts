@@ -13,7 +13,14 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PortalRouteImport } from './routes/_portal'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PortalWarningsRouteImport } from './routes/_portal.warnings'
+import { Route as PortalStaffRouteImport } from './routes/_portal.staff'
+import { Route as PortalSearchRouteImport } from './routes/_portal.search'
+import { Route as PortalInteractionsRouteImport } from './routes/_portal.interactions'
 import { Route as PortalDashboardRouteImport } from './routes/_portal.dashboard'
+import { Route as PortalAdminRouteImport } from './routes/_portal.admin'
+import { Route as PortalActivityRouteImport } from './routes/_portal.activity'
+import { Route as PortalStaffIdRouteImport } from './routes/_portal.staff.$id'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -34,23 +41,72 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalWarningsRoute = PortalWarningsRouteImport.update({
+  id: '/warnings',
+  path: '/warnings',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalStaffRoute = PortalStaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalSearchRoute = PortalSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalInteractionsRoute = PortalInteractionsRouteImport.update({
+  id: '/interactions',
+  path: '/interactions',
+  getParentRoute: () => PortalRoute,
+} as any)
 const PortalDashboardRoute = PortalDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => PortalRoute,
+} as any)
+const PortalAdminRoute = PortalAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalActivityRoute = PortalActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalStaffIdRoute = PortalStaffIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PortalStaffRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/activity': typeof PortalActivityRoute
+  '/admin': typeof PortalAdminRoute
   '/dashboard': typeof PortalDashboardRoute
+  '/interactions': typeof PortalInteractionsRoute
+  '/search': typeof PortalSearchRoute
+  '/staff': typeof PortalStaffRouteWithChildren
+  '/warnings': typeof PortalWarningsRoute
+  '/staff/$id': typeof PortalStaffIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/activity': typeof PortalActivityRoute
+  '/admin': typeof PortalAdminRoute
   '/dashboard': typeof PortalDashboardRoute
+  '/interactions': typeof PortalInteractionsRoute
+  '/search': typeof PortalSearchRoute
+  '/staff': typeof PortalStaffRouteWithChildren
+  '/warnings': typeof PortalWarningsRoute
+  '/staff/$id': typeof PortalStaffIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,20 +114,56 @@ export interface FileRoutesById {
   '/_portal': typeof PortalRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/_portal/activity': typeof PortalActivityRoute
+  '/_portal/admin': typeof PortalAdminRoute
   '/_portal/dashboard': typeof PortalDashboardRoute
+  '/_portal/interactions': typeof PortalInteractionsRoute
+  '/_portal/search': typeof PortalSearchRoute
+  '/_portal/staff': typeof PortalStaffRouteWithChildren
+  '/_portal/warnings': typeof PortalWarningsRoute
+  '/_portal/staff/$id': typeof PortalStaffIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/signup' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/activity'
+    | '/admin'
+    | '/dashboard'
+    | '/interactions'
+    | '/search'
+    | '/staff'
+    | '/warnings'
+    | '/staff/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/signup' | '/dashboard'
+  to:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/activity'
+    | '/admin'
+    | '/dashboard'
+    | '/interactions'
+    | '/search'
+    | '/staff'
+    | '/warnings'
+    | '/staff/$id'
   id:
     | '__root__'
     | '/'
     | '/_portal'
     | '/login'
     | '/signup'
+    | '/_portal/activity'
+    | '/_portal/admin'
     | '/_portal/dashboard'
+    | '/_portal/interactions'
+    | '/_portal/search'
+    | '/_portal/staff'
+    | '/_portal/warnings'
+    | '/_portal/staff/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -111,6 +203,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_portal/warnings': {
+      id: '/_portal/warnings'
+      path: '/warnings'
+      fullPath: '/warnings'
+      preLoaderRoute: typeof PortalWarningsRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/staff': {
+      id: '/_portal/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof PortalStaffRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/search': {
+      id: '/_portal/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof PortalSearchRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/interactions': {
+      id: '/_portal/interactions'
+      path: '/interactions'
+      fullPath: '/interactions'
+      preLoaderRoute: typeof PortalInteractionsRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/_portal/dashboard': {
       id: '/_portal/dashboard'
       path: '/dashboard'
@@ -118,15 +238,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalDashboardRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/_portal/admin': {
+      id: '/_portal/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof PortalAdminRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/activity': {
+      id: '/_portal/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof PortalActivityRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/staff/$id': {
+      id: '/_portal/staff/$id'
+      path: '/$id'
+      fullPath: '/staff/$id'
+      preLoaderRoute: typeof PortalStaffIdRouteImport
+      parentRoute: typeof PortalStaffRoute
+    }
   }
 }
 
+interface PortalStaffRouteChildren {
+  PortalStaffIdRoute: typeof PortalStaffIdRoute
+}
+
+const PortalStaffRouteChildren: PortalStaffRouteChildren = {
+  PortalStaffIdRoute: PortalStaffIdRoute,
+}
+
+const PortalStaffRouteWithChildren = PortalStaffRoute._addFileChildren(
+  PortalStaffRouteChildren,
+)
+
 interface PortalRouteChildren {
+  PortalActivityRoute: typeof PortalActivityRoute
+  PortalAdminRoute: typeof PortalAdminRoute
   PortalDashboardRoute: typeof PortalDashboardRoute
+  PortalInteractionsRoute: typeof PortalInteractionsRoute
+  PortalSearchRoute: typeof PortalSearchRoute
+  PortalStaffRoute: typeof PortalStaffRouteWithChildren
+  PortalWarningsRoute: typeof PortalWarningsRoute
 }
 
 const PortalRouteChildren: PortalRouteChildren = {
+  PortalActivityRoute: PortalActivityRoute,
+  PortalAdminRoute: PortalAdminRoute,
   PortalDashboardRoute: PortalDashboardRoute,
+  PortalInteractionsRoute: PortalInteractionsRoute,
+  PortalSearchRoute: PortalSearchRoute,
+  PortalStaffRoute: PortalStaffRouteWithChildren,
+  PortalWarningsRoute: PortalWarningsRoute,
 }
 
 const PortalRouteWithChildren =
