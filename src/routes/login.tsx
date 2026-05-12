@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { z } from "zod";
 import { Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -14,15 +13,14 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-const schema = z.object({
-  email: z.string().email("Invalid email").max(255),
-  password: z.string().min(1, "Password required").max(72),
-});
+function internalEmail(username: string): string {
+  return `${username.toLowerCase().trim()}@kng.internal`;
+}
 
 function LoginPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -30,25 +28,44 @@ function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const parsed = schema.safeParse({ email, password });
-    if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
+    if (!username.trim()) { toast.error("Username required"); return; }
+    if (!password) { toast.error("Password required"); return; }
+
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword(parsed.data);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: internalEmail(username),
+      password,
+    });
     setLoading(false);
+
     if (error) {
       const msg = error.message ?? "";
-      if (msg.toLowerCase().includes("email not confirmed")) {
-        toast.error("Please confirm your email first — check your inbox for the confirmation link.");
-      } else if (msg.toLowerCase().includes("invalid login credentials") || msg.toLowerCase().includes("invalid credentials")) {
-        toast.error("Incorrect email or password.");
+      if (msg.toLowerCase().includes("invalid login credentials") || msg.toLowerCase().includes("invalid credentials")) {
+        toast.error("Incorrect username or password.");
       } else if (msg.toLowerCase().includes("too many requests")) {
         toast.error("Too many attempts — please wait a moment and try again.");
       } else {
         toast.error(msg || "Sign in failed. Please try again.");
       }
-    } else {
-      navigate({ to: "/dashboard" });
+      return;
     }
+
+    // Check if account has been deactivated
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("deactivated")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profile?.deactivated) {
+        await supabase.auth.signOut();
+        toast.error("Your account has been deactivated. Contact a manager.");
+        return;
+      }
+    }
+
+    navigate({ to: "/dashboard" });
   }
 
   return (
@@ -65,12 +82,26 @@ function LoginPage() {
           <p className="mt-1 text-sm text-muted-foreground">Access the KNG Interactions Portal.</p>
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ""))}
+                autoComplete="username"
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in…" : "Sign in"}
