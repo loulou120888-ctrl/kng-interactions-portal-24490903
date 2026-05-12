@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Upload, Image as ImageIcon } from "lucide-react";
 import type { Department } from "@/lib/portal";
 
 interface Slot {
@@ -29,21 +29,38 @@ export function LogInteractionDialog({
   onLogged: () => void;
 }) {
   const { user } = useAuth();
-  const [location, setLocation] = useState("");
   const [summary, setSummary] = useState("");
+  const [posterMessage, setPosterMessage] = useState("");
+  const [f3Message, setF3Message] = useState("");
+  const [posterImageFile, setPosterImageFile] = useState<File | null>(null);
+  const [posterImagePreview, setPosterImagePreview] = useState<string | null>(null);
   const [staff, setStaff] = useState<{ id: string; display_name: string }[]>([]);
   const [attendees, setAttendees] = useState<string[]>([]);
   const [prizes, setPrizes] = useState<{ code: string; name: string; default_quantity: number }[]>([]);
   const [winners, setWinners] = useState<Winner[]>([]);
   const [busy, setBusy] = useState(false);
+  const posterFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
+    setSummary("");
+    setPosterMessage("");
+    setF3Message("");
+    setPosterImageFile(null);
+    setPosterImagePreview(null);
+    setAttendees([]);
+    setWinners([]);
     supabase.from("profiles").select("id, display_name").order("display_name")
       .then(({ data }) => setStaff((data ?? []) as any));
     supabase.from("prizes").select("code, name, default_quantity").order("name")
       .then(({ data }) => setPrizes((data ?? []) as any));
   }, [open]);
+
+  function selectPosterImage(file: File) {
+    setPosterImageFile(file);
+    const url = URL.createObjectURL(file);
+    setPosterImagePreview(url);
+  }
 
   function toggleAttendee(id: string) {
     setAttendees((a) => a.includes(id) ? a.filter((x) => x !== id) : [...a, id]);
@@ -60,13 +77,23 @@ export function LogInteractionDialog({
   async function submit() {
     if (!user) return;
     setBusy(true);
-    // 1. mark slot completed (interaction_id set after)
-    // 2. create interaction
+
+    let posterImageUrl: string | null = null;
+    if (posterImageFile) {
+      const path = `${user.id}/${Date.now()}-${posterImageFile.name}`;
+      const { error: ue } = await supabase.storage.from("posters").upload(path, posterImageFile, { contentType: posterImageFile.type });
+      if (ue) { setBusy(false); toast.error("Failed to upload poster image: " + ue.message); return; }
+      const { data } = supabase.storage.from("posters").getPublicUrl(path);
+      posterImageUrl = data.publicUrl;
+    }
+
     const { data: ix, error: ie } = await supabase.from("interactions").insert({
       department: slot.department,
       title: slot.title,
-      location: location.trim() || null,
       summary: summary.trim() || null,
+      poster_message: posterMessage.trim() || null,
+      poster_image_url: posterImageUrl,
+      f3_message: f3Message.trim() || null,
       author_id: user.id,
       slot_id: slot.id,
     }).select("id").single();
@@ -85,7 +112,7 @@ export function LogInteractionDialog({
         quantity: w.quantity,
       })));
     }
-    await supabase.from("schedule_slots").update({ status: "completed", interaction_id: ix.id }).eq("id", slot.id);
+    await supabase.from("schedule_slots").update({ status: "completed", interaction_id: ix.id, claimed_by: null }).eq("id", slot.id);
 
     setBusy(false);
     toast.success("Interaction logged · +1 point");
@@ -97,15 +124,37 @@ export function LogInteractionDialog({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Log: {slot.title}</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Location</Label>
-              <Input value={location} onChange={(e) => setLocation(e.target.value)} />
-            </div>
-          </div>
           <div className="space-y-2">
             <Label>Summary</Label>
-            <Textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={3} />
+            <Textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={3} placeholder="Brief description of what happened…" />
+          </div>
+
+          <div className="rounded-xl border border-border bg-background/40 p-4 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Poster / Promo</p>
+            <div className="space-y-2">
+              <Label>Poster message</Label>
+              <Textarea value={posterMessage} onChange={(e) => setPosterMessage(e.target.value)} rows={2} placeholder="e.g. 🎉 Friday Night Quiz is LIVE! Come join us…" />
+            </div>
+            <div className="space-y-2">
+              <Label>Poster image</Label>
+              <input ref={posterFileRef} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && selectPosterImage(e.target.files[0])} />
+              <Button type="button" variant="outline" size="sm" onClick={() => posterFileRef.current?.click()}>
+                <Upload className="h-3.5 w-3.5 mr-1.5" /> {posterImageFile ? posterImageFile.name : "Upload image"}
+              </Button>
+              {posterImagePreview && (
+                <div className="relative w-28 h-28 rounded-lg overflow-hidden border border-border">
+                  <img src={posterImagePreview} alt="poster" className="w-full h-full object-cover" />
+                  <button onClick={() => { setPosterImageFile(null); setPosterImagePreview(null); }}
+                    className="absolute top-1 right-1 rounded-full bg-background/80 p-0.5 hover:bg-destructive hover:text-destructive-foreground transition">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>F3 message</Label>
+              <Textarea value={f3Message} onChange={(e) => setF3Message(e.target.value)} rows={2} placeholder="e.g. /f3 message here for in-game broadcast…" />
+            </div>
           </div>
 
           <div className="space-y-2">

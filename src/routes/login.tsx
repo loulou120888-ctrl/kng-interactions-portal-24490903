@@ -16,7 +16,7 @@ export const Route = createFileRoute("/login")({
 
 const schema = z.object({
   email: z.string().email("Invalid email").max(255),
-  password: z.string().min(6, "Min 6 characters").max(72),
+  password: z.string().min(1, "Password required").max(72),
 });
 
 function LoginPage() {
@@ -35,8 +35,20 @@ function LoginPage() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword(parsed.data);
     setLoading(false);
-    if (error) toast.error(error.message);
-    else navigate({ to: "/dashboard" });
+    if (error) {
+      const msg = error.message ?? "";
+      if (msg.toLowerCase().includes("email not confirmed")) {
+        toast.error("Please confirm your email first — check your inbox for the confirmation link.");
+      } else if (msg.toLowerCase().includes("invalid login credentials") || msg.toLowerCase().includes("invalid credentials")) {
+        toast.error("Incorrect email or password.");
+      } else if (msg.toLowerCase().includes("too many requests")) {
+        toast.error("Too many attempts — please wait a moment and try again.");
+      } else {
+        toast.error(msg || "Sign in failed. Please try again.");
+      }
+    } else {
+      navigate({ to: "/dashboard" });
+    }
   }
 
   return (
@@ -54,11 +66,11 @@ function LoginPage() {
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in…" : "Sign in"}
