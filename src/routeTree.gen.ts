@@ -16,10 +16,17 @@ import { Route as PortalRouteImport } from './routes/_portal'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalStaffRouteImport } from './routes/_portal.staff'
 import { Route as PortalSearchRouteImport } from './routes/_portal.search'
+import { Route as PortalLeaderboardRouteImport } from './routes/_portal.leaderboard'
 import { Route as PortalInteractionsRouteImport } from './routes/_portal.interactions'
+import { Route as PortalHallRouteImport } from './routes/_portal.hall'
 import { Route as PortalDashboardRouteImport } from './routes/_portal.dashboard'
+import { Route as PortalCompRouteImport } from './routes/_portal.comp'
+import { Route as PortalArchivesRouteImport } from './routes/_portal.archives'
+import { Route as PortalAnnouncementsRouteImport } from './routes/_portal.announcements'
 import { Route as PortalAdminRouteImport } from './routes/_portal.admin'
 import { Route as PortalStaffIdRouteImport } from './routes/_portal.staff.$id'
+import { Route as PortalScheduleEventsRouteImport } from './routes/_portal.schedule.events'
+import { Route as PortalScheduleEntertainmentRouteImport } from './routes/_portal.schedule.entertainment'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -55,14 +62,39 @@ const PortalSearchRoute = PortalSearchRouteImport.update({
   path: '/search',
   getParentRoute: () => PortalRoute,
 } as any)
+const PortalLeaderboardRoute = PortalLeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => PortalRoute,
+} as any)
 const PortalInteractionsRoute = PortalInteractionsRouteImport.update({
   id: '/interactions',
   path: '/interactions',
   getParentRoute: () => PortalRoute,
 } as any)
+const PortalHallRoute = PortalHallRouteImport.update({
+  id: '/hall',
+  path: '/hall',
+  getParentRoute: () => PortalRoute,
+} as any)
 const PortalDashboardRoute = PortalDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalCompRoute = PortalCompRouteImport.update({
+  id: '/comp',
+  path: '/comp',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalArchivesRoute = PortalArchivesRouteImport.update({
+  id: '/archives',
+  path: '/archives',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalAnnouncementsRoute = PortalAnnouncementsRouteImport.update({
+  id: '/announcements',
+  path: '/announcements',
   getParentRoute: () => PortalRoute,
 } as any)
 const PortalAdminRoute = PortalAdminRouteImport.update({
@@ -75,6 +107,17 @@ const PortalStaffIdRoute = PortalStaffIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => PortalStaffRoute,
 } as any)
+const PortalScheduleEventsRoute = PortalScheduleEventsRouteImport.update({
+  id: '/schedule/events',
+  path: '/schedule/events',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalScheduleEntertainmentRoute =
+  PortalScheduleEntertainmentRouteImport.update({
+    id: '/schedule/entertainment',
+    path: '/schedule/entertainment',
+    getParentRoute: () => PortalRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,10 +125,17 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof PortalAdminRoute
+  '/announcements': typeof PortalAnnouncementsRoute
+  '/archives': typeof PortalArchivesRoute
+  '/comp': typeof PortalCompRoute
   '/dashboard': typeof PortalDashboardRoute
+  '/hall': typeof PortalHallRoute
   '/interactions': typeof PortalInteractionsRoute
+  '/leaderboard': typeof PortalLeaderboardRoute
   '/search': typeof PortalSearchRoute
   '/staff': typeof PortalStaffRouteWithChildren
+  '/schedule/entertainment': typeof PortalScheduleEntertainmentRoute
+  '/schedule/events': typeof PortalScheduleEventsRoute
   '/staff/$id': typeof PortalStaffIdRoute
 }
 export interface FileRoutesByTo {
@@ -94,10 +144,17 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof PortalAdminRoute
+  '/announcements': typeof PortalAnnouncementsRoute
+  '/archives': typeof PortalArchivesRoute
+  '/comp': typeof PortalCompRoute
   '/dashboard': typeof PortalDashboardRoute
+  '/hall': typeof PortalHallRoute
   '/interactions': typeof PortalInteractionsRoute
+  '/leaderboard': typeof PortalLeaderboardRoute
   '/search': typeof PortalSearchRoute
   '/staff': typeof PortalStaffRouteWithChildren
+  '/schedule/entertainment': typeof PortalScheduleEntertainmentRoute
+  '/schedule/events': typeof PortalScheduleEventsRoute
   '/staff/$id': typeof PortalStaffIdRoute
 }
 export interface FileRoutesById {
@@ -108,10 +165,17 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_portal/admin': typeof PortalAdminRoute
+  '/_portal/announcements': typeof PortalAnnouncementsRoute
+  '/_portal/archives': typeof PortalArchivesRoute
+  '/_portal/comp': typeof PortalCompRoute
   '/_portal/dashboard': typeof PortalDashboardRoute
+  '/_portal/hall': typeof PortalHallRoute
   '/_portal/interactions': typeof PortalInteractionsRoute
+  '/_portal/leaderboard': typeof PortalLeaderboardRoute
   '/_portal/search': typeof PortalSearchRoute
   '/_portal/staff': typeof PortalStaffRouteWithChildren
+  '/_portal/schedule/entertainment': typeof PortalScheduleEntertainmentRoute
+  '/_portal/schedule/events': typeof PortalScheduleEventsRoute
   '/_portal/staff/$id': typeof PortalStaffIdRoute
 }
 export interface FileRouteTypes {
@@ -122,10 +186,17 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/admin'
+    | '/announcements'
+    | '/archives'
+    | '/comp'
     | '/dashboard'
+    | '/hall'
     | '/interactions'
+    | '/leaderboard'
     | '/search'
     | '/staff'
+    | '/schedule/entertainment'
+    | '/schedule/events'
     | '/staff/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -134,10 +205,17 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/admin'
+    | '/announcements'
+    | '/archives'
+    | '/comp'
     | '/dashboard'
+    | '/hall'
     | '/interactions'
+    | '/leaderboard'
     | '/search'
     | '/staff'
+    | '/schedule/entertainment'
+    | '/schedule/events'
     | '/staff/$id'
   id:
     | '__root__'
@@ -147,10 +225,17 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/_portal/admin'
+    | '/_portal/announcements'
+    | '/_portal/archives'
+    | '/_portal/comp'
     | '/_portal/dashboard'
+    | '/_portal/hall'
     | '/_portal/interactions'
+    | '/_portal/leaderboard'
     | '/_portal/search'
     | '/_portal/staff'
+    | '/_portal/schedule/entertainment'
+    | '/_portal/schedule/events'
     | '/_portal/staff/$id'
   fileRoutesById: FileRoutesById
 }
@@ -213,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalSearchRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/_portal/leaderboard': {
+      id: '/_portal/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof PortalLeaderboardRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/_portal/interactions': {
       id: '/_portal/interactions'
       path: '/interactions'
@@ -220,11 +312,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalInteractionsRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/_portal/hall': {
+      id: '/_portal/hall'
+      path: '/hall'
+      fullPath: '/hall'
+      preLoaderRoute: typeof PortalHallRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/_portal/dashboard': {
       id: '/_portal/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof PortalDashboardRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/comp': {
+      id: '/_portal/comp'
+      path: '/comp'
+      fullPath: '/comp'
+      preLoaderRoute: typeof PortalCompRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/archives': {
+      id: '/_portal/archives'
+      path: '/archives'
+      fullPath: '/archives'
+      preLoaderRoute: typeof PortalArchivesRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/announcements': {
+      id: '/_portal/announcements'
+      path: '/announcements'
+      fullPath: '/announcements'
+      preLoaderRoute: typeof PortalAnnouncementsRouteImport
       parentRoute: typeof PortalRoute
     }
     '/_portal/admin': {
@@ -240,6 +360,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/staff/$id'
       preLoaderRoute: typeof PortalStaffIdRouteImport
       parentRoute: typeof PortalStaffRoute
+    }
+    '/_portal/schedule/events': {
+      id: '/_portal/schedule/events'
+      path: '/schedule/events'
+      fullPath: '/schedule/events'
+      preLoaderRoute: typeof PortalScheduleEventsRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/schedule/entertainment': {
+      id: '/_portal/schedule/entertainment'
+      path: '/schedule/entertainment'
+      fullPath: '/schedule/entertainment'
+      preLoaderRoute: typeof PortalScheduleEntertainmentRouteImport
+      parentRoute: typeof PortalRoute
     }
   }
 }
@@ -258,18 +392,32 @@ const PortalStaffRouteWithChildren = PortalStaffRoute._addFileChildren(
 
 interface PortalRouteChildren {
   PortalAdminRoute: typeof PortalAdminRoute
+  PortalAnnouncementsRoute: typeof PortalAnnouncementsRoute
+  PortalArchivesRoute: typeof PortalArchivesRoute
+  PortalCompRoute: typeof PortalCompRoute
   PortalDashboardRoute: typeof PortalDashboardRoute
+  PortalHallRoute: typeof PortalHallRoute
   PortalInteractionsRoute: typeof PortalInteractionsRoute
+  PortalLeaderboardRoute: typeof PortalLeaderboardRoute
   PortalSearchRoute: typeof PortalSearchRoute
   PortalStaffRoute: typeof PortalStaffRouteWithChildren
+  PortalScheduleEntertainmentRoute: typeof PortalScheduleEntertainmentRoute
+  PortalScheduleEventsRoute: typeof PortalScheduleEventsRoute
 }
 
 const PortalRouteChildren: PortalRouteChildren = {
   PortalAdminRoute: PortalAdminRoute,
+  PortalAnnouncementsRoute: PortalAnnouncementsRoute,
+  PortalArchivesRoute: PortalArchivesRoute,
+  PortalCompRoute: PortalCompRoute,
   PortalDashboardRoute: PortalDashboardRoute,
+  PortalHallRoute: PortalHallRoute,
   PortalInteractionsRoute: PortalInteractionsRoute,
+  PortalLeaderboardRoute: PortalLeaderboardRoute,
   PortalSearchRoute: PortalSearchRoute,
   PortalStaffRoute: PortalStaffRouteWithChildren,
+  PortalScheduleEntertainmentRoute: PortalScheduleEntertainmentRoute,
+  PortalScheduleEventsRoute: PortalScheduleEventsRoute,
 }
 
 const PortalRouteWithChildren =
