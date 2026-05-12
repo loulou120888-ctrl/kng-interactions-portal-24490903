@@ -14,41 +14,255 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcement_reads: {
+        Row: {
+          announcement_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_reads_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcements: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          title: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          title: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      hall_of_fame: {
+        Row: {
+          author_id: string
+          caption: string | null
+          created_at: string
+          frame_id: string
+          id: string
+          image_url: string
+          winner_id: string | null
+        }
+        Insert: {
+          author_id: string
+          caption?: string | null
+          created_at?: string
+          frame_id: string
+          id?: string
+          image_url: string
+          winner_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          caption?: string | null
+          created_at?: string
+          frame_id?: string
+          id?: string
+          image_url?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
+      interaction_attendees: {
+        Row: {
+          interaction_id: string
+          user_id: string
+        }
+        Insert: {
+          interaction_id: string
+          user_id: string
+        }
+        Update: {
+          interaction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interaction_attendees_interaction_id_fkey"
+            columns: ["interaction_id"]
+            isOneToOne: false
+            referencedRelation: "interactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interaction_winners: {
+        Row: {
+          comped: boolean
+          comped_at: string | null
+          comped_by: string | null
+          created_at: string
+          id: string
+          interaction_id: string
+          prize_code: string
+          prize_name: string | null
+          quantity: number
+          winner_id: string
+        }
+        Insert: {
+          comped?: boolean
+          comped_at?: string | null
+          comped_by?: string | null
+          created_at?: string
+          id?: string
+          interaction_id: string
+          prize_code: string
+          prize_name?: string | null
+          quantity?: number
+          winner_id: string
+        }
+        Update: {
+          comped?: boolean
+          comped_at?: string | null
+          comped_by?: string | null
+          created_at?: string
+          id?: string
+          interaction_id?: string
+          prize_code?: string
+          prize_name?: string | null
+          quantity?: number
+          winner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interaction_winners_interaction_id_fkey"
+            columns: ["interaction_id"]
+            isOneToOne: false
+            referencedRelation: "interactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interactions: {
         Row: {
-          author_id: string | null
-          citizen_name: string
+          author_id: string
           created_at: string
-          details: string | null
+          department: Database["public"]["Enums"]["department"]
           id: string
           location: string | null
-          severity: string
-          summary: string
-          type: string
+          slot_id: string | null
+          summary: string | null
+          title: string
           updated_at: string
         }
         Insert: {
-          author_id?: string | null
-          citizen_name: string
+          author_id: string
           created_at?: string
-          details?: string | null
+          department: Database["public"]["Enums"]["department"]
           id?: string
           location?: string | null
-          severity?: string
-          summary: string
-          type?: string
+          slot_id?: string | null
+          summary?: string | null
+          title: string
           updated_at?: string
         }
         Update: {
-          author_id?: string | null
-          citizen_name?: string
+          author_id?: string
           created_at?: string
-          details?: string | null
+          department?: Database["public"]["Enums"]["department"]
           id?: string
           location?: string | null
-          severity?: string
-          summary?: string
-          type?: string
+          slot_id?: string | null
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interactions_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      points_log: {
+        Row: {
+          amount: number
+          awarded_at: string
+          id: string
+          interaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          awarded_at?: string
+          id?: string
+          interaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          awarded_at?: string
+          id?: string
+          interaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "points_log_interaction_id_fkey"
+            columns: ["interaction_id"]
+            isOneToOne: false
+            referencedRelation: "interactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prizes: {
+        Row: {
+          code: string
+          created_at: string
+          default_quantity: number
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          default_quantity?: number
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          default_quantity?: number
+          id?: string
+          name?: string
           updated_at?: string
         }
         Relationships: []
@@ -56,60 +270,108 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
-          badge_number: string | null
           created_at: string
-          department: string | null
+          department: Database["public"]["Enums"]["department"] | null
           display_name: string
           id: string
-          rank: string | null
           status: string
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
-          badge_number?: string | null
           created_at?: string
-          department?: string | null
+          department?: Database["public"]["Enums"]["department"] | null
           display_name: string
           id: string
-          rank?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
-          badge_number?: string | null
           created_at?: string
-          department?: string | null
+          department?: Database["public"]["Enums"]["department"] | null
           display_name?: string
           id?: string
-          rank?: string | null
           status?: string
           updated_at?: string
         }
         Relationships: []
       }
-      staff_activity: {
+      schedule_slots: {
         Row: {
-          action: string
+          booked_by: string
           created_at: string
-          description: string | null
+          department: Database["public"]["Enums"]["department"]
           id: string
-          user_id: string
+          interaction_id: string | null
+          notes: string | null
+          schedule_type: Database["public"]["Enums"]["schedule_type"]
+          slot_start: string
+          status: Database["public"]["Enums"]["slot_status"]
+          title: string
+          updated_at: string
         }
         Insert: {
-          action: string
+          booked_by: string
           created_at?: string
-          description?: string | null
+          department: Database["public"]["Enums"]["department"]
           id?: string
-          user_id: string
+          interaction_id?: string | null
+          notes?: string | null
+          schedule_type: Database["public"]["Enums"]["schedule_type"]
+          slot_start: string
+          status?: Database["public"]["Enums"]["slot_status"]
+          title: string
+          updated_at?: string
         }
         Update: {
-          action?: string
+          booked_by?: string
           created_at?: string
-          description?: string | null
+          department?: Database["public"]["Enums"]["department"]
           id?: string
-          user_id?: string
+          interaction_id?: string | null
+          notes?: string | null
+          schedule_type?: Database["public"]["Enums"]["schedule_type"]
+          slot_start?: string
+          status?: Database["public"]["Enums"]["slot_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      signup_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          department: Database["public"]["Enums"]["department"] | null
+          id: string
+          revoked: boolean
+          role: Database["public"]["Enums"]["app_role"]
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"] | null
+          id?: string
+          revoked?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"] | null
+          id?: string
+          revoked?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          used_at?: string | null
+          used_by?: string | null
         }
         Relationships: []
       }
@@ -134,36 +396,6 @@ export type Database = {
         }
         Relationships: []
       }
-      warnings: {
-        Row: {
-          created_at: string
-          id: string
-          issued_by: string | null
-          notes: string | null
-          reason: string
-          severity: string
-          target_user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          issued_by?: string | null
-          notes?: string | null
-          reason: string
-          severity?: string
-          target_user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          issued_by?: string | null
-          notes?: string | null
-          reason?: string
-          severity?: string
-          target_user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -176,10 +408,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_aux_plus: { Args: { _user_id: string }; Returns: boolean }
+      is_manager: { Args: { _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role: "member" | "sld" | "ld" | "aux" | "adm" | "manager"
+      department: "events" | "parties" | "entertainment"
+      schedule_type: "events_parties" | "entertainment"
+      slot_status: "booked" | "in_progress" | "completed" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -307,7 +544,10 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["member", "sld", "ld", "aux", "adm", "manager"],
+      department: ["events", "parties", "entertainment"],
+      schedule_type: ["events_parties", "entertainment"],
+      slot_status: ["booked", "in_progress", "completed", "cancelled"],
     },
   },
 } as const

@@ -1,17 +1,18 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-
-type Role = "admin" | "moderator" | "user";
+import { isAuxPlus, isManager, topRole, type Role } from "@/lib/portal";
 
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
   roles: Role[];
-  isAdmin: boolean;
-  isStaff: boolean;
+  topRole: Role;
+  isAuxPlus: boolean;
+  isManager: boolean;
   signOut: () => Promise<void>;
+  refreshRoles: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -22,15 +23,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
 
+  async function loadRoles(uid: string) {
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+    setRoles(((data ?? []).map((r) => r.role)) as Role[]);
+  }
+
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       setUser(s?.user ?? null);
-      if (s?.user) {
-        setTimeout(() => loadRoles(s.user.id), 0);
-      } else {
-        setRoles([]);
-      }
+      if (s?.user) setTimeout(() => loadRoles(s.user.id), 0);
+      else setRoles([]);
     });
 
     supabase.auth.getSession().then(({ data: { session: s } }) => {
@@ -43,21 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function loadRoles(uid: string) {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
-    setRoles((data?.map((r) => r.role) as Role[]) ?? []);
-  }
-
   const value: AuthContextValue = {
     user,
     session,
     loading,
     roles,
-    isAdmin: roles.includes("admin"),
-    isStaff: roles.includes("admin") || roles.includes("moderator"),
-    signOut: async () => {
-      await supabase.auth.signOut();
-    },
+    topRole: topRole(roles),
+    isAuxPlus: isAuxPlus(roles),
+    isManager: isManager(roles),
+    signOut: async () => { await supabase.auth.signOut(); },
+    refreshRoles: async () => { if (user) await loadRoles(user.id); },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

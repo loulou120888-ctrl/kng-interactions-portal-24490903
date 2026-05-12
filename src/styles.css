@@ -46,30 +46,32 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-events: var(--dept-events);
+  --color-parties: var(--dept-parties);
+  --color-entertainment: var(--dept-entertainment);
 }
 
-/* Dark-only modern MDT theme */
 :root {
   --radius: 0.875rem;
 
-  --background: oklch(0.16 0.012 260);
+  --background: oklch(0.13 0.005 260);
   --foreground: oklch(0.96 0.005 260);
 
-  --card: oklch(0.205 0.014 260);
+  --card: oklch(0.18 0.008 260);
   --card-foreground: oklch(0.96 0.005 260);
-  --popover: oklch(0.205 0.014 260);
+  --popover: oklch(0.18 0.008 260);
   --popover-foreground: oklch(0.96 0.005 260);
 
-  --primary: oklch(0.72 0.16 245);
-  --primary-foreground: oklch(0.16 0.012 260);
+  --primary: oklch(0.72 0.18 305);
+  --primary-foreground: oklch(0.13 0.005 260);
 
-  --secondary: oklch(0.26 0.018 260);
+  --secondary: oklch(0.24 0.012 260);
   --secondary-foreground: oklch(0.96 0.005 260);
 
-  --muted: oklch(0.24 0.014 260);
-  --muted-foreground: oklch(0.68 0.02 260);
+  --muted: oklch(0.22 0.01 260);
+  --muted-foreground: oklch(0.7 0.012 260);
 
-  --accent: oklch(0.3 0.04 245);
+  --accent: oklch(0.28 0.04 305);
   --accent-foreground: oklch(0.96 0.005 260);
 
   --destructive: oklch(0.62 0.22 25);
@@ -81,39 +83,39 @@
   --warning: oklch(0.78 0.16 75);
   --warning-foreground: oklch(0.16 0.012 260);
 
-  --border: oklch(0.28 0.014 260);
-  --input: oklch(0.26 0.018 260);
-  --ring: oklch(0.72 0.16 245);
+  --border: oklch(0.26 0.01 260);
+  --input: oklch(0.24 0.012 260);
+  --ring: oklch(0.72 0.18 305);
 
-  --chart-1: oklch(0.72 0.16 245);
-  --chart-2: oklch(0.7 0.16 155);
-  --chart-3: oklch(0.78 0.16 75);
-  --chart-4: oklch(0.65 0.2 305);
-  --chart-5: oklch(0.62 0.22 25);
+  --chart-1: oklch(0.72 0.18 305);
+  --chart-2: oklch(0.78 0.18 350);
+  --chart-3: oklch(0.78 0.16 210);
+  --chart-4: oklch(0.7 0.16 155);
+  --chart-5: oklch(0.78 0.16 75);
 
-  --sidebar: oklch(0.135 0.012 260);
+  --sidebar: oklch(0.11 0.005 260);
   --sidebar-foreground: oklch(0.86 0.01 260);
-  --sidebar-primary: oklch(0.72 0.16 245);
-  --sidebar-primary-foreground: oklch(0.16 0.012 260);
-  --sidebar-accent: oklch(0.22 0.016 260);
+  --sidebar-primary: oklch(0.72 0.18 305);
+  --sidebar-primary-foreground: oklch(0.13 0.005 260);
+  --sidebar-accent: oklch(0.2 0.01 260);
   --sidebar-accent-foreground: oklch(0.96 0.005 260);
-  --sidebar-border: oklch(0.24 0.014 260);
-  --sidebar-ring: oklch(0.72 0.16 245);
+  --sidebar-border: oklch(0.22 0.01 260);
+  --sidebar-ring: oklch(0.72 0.18 305);
 
-  --gradient-primary: linear-gradient(135deg, oklch(0.72 0.16 245), oklch(0.65 0.2 305));
-  --gradient-surface: linear-gradient(180deg, oklch(0.205 0.014 260), oklch(0.18 0.012 260));
+  --dept-events: oklch(0.6 0.22 305);
+  --dept-parties: oklch(0.72 0.22 350);
+  --dept-entertainment: oklch(0.75 0.16 210);
+
+  --gradient-primary: linear-gradient(135deg, oklch(0.6 0.22 305), oklch(0.72 0.22 350));
+  --gradient-surface: linear-gradient(180deg, oklch(0.2 0.01 260), oklch(0.16 0.008 260));
   --shadow-elegant: 0 10px 40px -12px oklch(0 0 0 / 0.5), 0 0 0 1px oklch(1 0 0 / 0.04);
-  --shadow-glow: 0 0 30px -8px oklch(0.72 0.16 245 / 0.4);
+  --shadow-glow: 0 0 30px -8px oklch(0.72 0.18 305 / 0.4);
 }
 
-html {
-  color-scheme: dark;
-}
+html { color-scheme: dark; }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
+  * { border-color: var(--color-border); }
   html, body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -121,8 +123,9 @@ html {
   }
   body {
     background-image:
-      radial-gradient(at 0% 0%, oklch(0.72 0.16 245 / 0.08) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, oklch(0.65 0.2 305 / 0.06) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, oklch(0.6 0.22 305 / 0.08) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, oklch(0.78 0.18 350 / 0.06) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, oklch(0.78 0.16 210 / 0.05) 0px, transparent 50%);
     background-attachment: fixed;
   }
 }
