@@ -14,13 +14,11 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PortalRouteImport } from './routes/_portal'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PortalWarningsRouteImport } from './routes/_portal.warnings'
 import { Route as PortalStaffRouteImport } from './routes/_portal.staff'
 import { Route as PortalSearchRouteImport } from './routes/_portal.search'
 import { Route as PortalInteractionsRouteImport } from './routes/_portal.interactions'
 import { Route as PortalDashboardRouteImport } from './routes/_portal.dashboard'
 import { Route as PortalAdminRouteImport } from './routes/_portal.admin'
-import { Route as PortalActivityRouteImport } from './routes/_portal.activity'
 import { Route as PortalStaffIdRouteImport } from './routes/_portal.staff.$id'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -47,11 +45,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PortalWarningsRoute = PortalWarningsRouteImport.update({
-  id: '/warnings',
-  path: '/warnings',
-  getParentRoute: () => PortalRoute,
-} as any)
 const PortalStaffRoute = PortalStaffRouteImport.update({
   id: '/staff',
   path: '/staff',
@@ -77,11 +70,6 @@ const PortalAdminRoute = PortalAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => PortalRoute,
 } as any)
-const PortalActivityRoute = PortalActivityRouteImport.update({
-  id: '/activity',
-  path: '/activity',
-  getParentRoute: () => PortalRoute,
-} as any)
 const PortalStaffIdRoute = PortalStaffIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -93,13 +81,11 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/activity': typeof PortalActivityRoute
   '/admin': typeof PortalAdminRoute
   '/dashboard': typeof PortalDashboardRoute
   '/interactions': typeof PortalInteractionsRoute
   '/search': typeof PortalSearchRoute
   '/staff': typeof PortalStaffRouteWithChildren
-  '/warnings': typeof PortalWarningsRoute
   '/staff/$id': typeof PortalStaffIdRoute
 }
 export interface FileRoutesByTo {
@@ -107,13 +93,11 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/activity': typeof PortalActivityRoute
   '/admin': typeof PortalAdminRoute
   '/dashboard': typeof PortalDashboardRoute
   '/interactions': typeof PortalInteractionsRoute
   '/search': typeof PortalSearchRoute
   '/staff': typeof PortalStaffRouteWithChildren
-  '/warnings': typeof PortalWarningsRoute
   '/staff/$id': typeof PortalStaffIdRoute
 }
 export interface FileRoutesById {
@@ -123,13 +107,11 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/_portal/activity': typeof PortalActivityRoute
   '/_portal/admin': typeof PortalAdminRoute
   '/_portal/dashboard': typeof PortalDashboardRoute
   '/_portal/interactions': typeof PortalInteractionsRoute
   '/_portal/search': typeof PortalSearchRoute
   '/_portal/staff': typeof PortalStaffRouteWithChildren
-  '/_portal/warnings': typeof PortalWarningsRoute
   '/_portal/staff/$id': typeof PortalStaffIdRoute
 }
 export interface FileRouteTypes {
@@ -139,13 +121,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/sitemap.xml'
-    | '/activity'
     | '/admin'
     | '/dashboard'
     | '/interactions'
     | '/search'
     | '/staff'
-    | '/warnings'
     | '/staff/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -153,13 +133,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/sitemap.xml'
-    | '/activity'
     | '/admin'
     | '/dashboard'
     | '/interactions'
     | '/search'
     | '/staff'
-    | '/warnings'
     | '/staff/$id'
   id:
     | '__root__'
@@ -168,13 +146,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/sitemap.xml'
-    | '/_portal/activity'
     | '/_portal/admin'
     | '/_portal/dashboard'
     | '/_portal/interactions'
     | '/_portal/search'
     | '/_portal/staff'
-    | '/_portal/warnings'
     | '/_portal/staff/$id'
   fileRoutesById: FileRoutesById
 }
@@ -223,13 +199,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_portal/warnings': {
-      id: '/_portal/warnings'
-      path: '/warnings'
-      fullPath: '/warnings'
-      preLoaderRoute: typeof PortalWarningsRouteImport
-      parentRoute: typeof PortalRoute
-    }
     '/_portal/staff': {
       id: '/_portal/staff'
       path: '/staff'
@@ -265,13 +234,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalAdminRouteImport
       parentRoute: typeof PortalRoute
     }
-    '/_portal/activity': {
-      id: '/_portal/activity'
-      path: '/activity'
-      fullPath: '/activity'
-      preLoaderRoute: typeof PortalActivityRouteImport
-      parentRoute: typeof PortalRoute
-    }
     '/_portal/staff/$id': {
       id: '/_portal/staff/$id'
       path: '/$id'
@@ -295,23 +257,19 @@ const PortalStaffRouteWithChildren = PortalStaffRoute._addFileChildren(
 )
 
 interface PortalRouteChildren {
-  PortalActivityRoute: typeof PortalActivityRoute
   PortalAdminRoute: typeof PortalAdminRoute
   PortalDashboardRoute: typeof PortalDashboardRoute
   PortalInteractionsRoute: typeof PortalInteractionsRoute
   PortalSearchRoute: typeof PortalSearchRoute
   PortalStaffRoute: typeof PortalStaffRouteWithChildren
-  PortalWarningsRoute: typeof PortalWarningsRoute
 }
 
 const PortalRouteChildren: PortalRouteChildren = {
-  PortalActivityRoute: PortalActivityRoute,
   PortalAdminRoute: PortalAdminRoute,
   PortalDashboardRoute: PortalDashboardRoute,
   PortalInteractionsRoute: PortalInteractionsRoute,
   PortalSearchRoute: PortalSearchRoute,
   PortalStaffRoute: PortalStaffRouteWithChildren,
-  PortalWarningsRoute: PortalWarningsRoute,
 }
 
 const PortalRouteWithChildren =
@@ -327,3 +285,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
