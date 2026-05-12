@@ -151,7 +151,6 @@ function SignupPage() {
           <h1 className="text-xl font-semibold">Redeem signup code</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Each code is one-time. Ask an AUX+ for yours.
-            If you are the very first signup, leave the code blank.
           </p>
 
           {error && (
@@ -167,7 +166,7 @@ function SignupPage() {
               <Input
                 value={form.signup_code}
                 onChange={(e) => set("signup_code", e.target.value)}
-                placeholder="KNG-XXXX (blank if first signup)"
+                placeholder="KNG-XXXX"
                 autoComplete="off"
               />
             </div>
