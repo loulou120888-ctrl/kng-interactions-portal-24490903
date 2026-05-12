@@ -1,12 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Crown } from "lucide-react";
+import { Crown, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — KNG Interactions Portal" }] }),
@@ -17,35 +16,45 @@ function internalEmail(username: string): string {
   return `${username.toLowerCase().trim()}@kng.internal`;
 }
 
+function toEmail(input: string): string {
+  const trimmed = input.trim();
+  // If it already looks like an email (has @), use as-is
+  return trimmed.includes("@") ? trimmed : internalEmail(trimmed);
+}
+
 function LoginPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { if (user) navigate({ to: "/dashboard" }); }, [user, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!username.trim()) { toast.error("Username required"); return; }
-    if (!password) { toast.error("Password required"); return; }
+    setError(null);
+    if (!username.trim()) { setError("Username required"); return; }
+    if (!password) { setError("Password required"); return; }
 
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: internalEmail(username),
+    const { data, error: authErr } = await supabase.auth.signInWithPassword({
+      email: toEmail(username),
       password,
     });
     setLoading(false);
 
-    if (error) {
-      const msg = error.message ?? "";
+    if (authErr) {
+      const msg = authErr.message ?? "";
       if (msg.toLowerCase().includes("invalid login credentials") || msg.toLowerCase().includes("invalid credentials")) {
-        toast.error("Incorrect username or password.");
+        setError("Incorrect username or password.");
+      } else if (msg.toLowerCase().includes("email not confirmed")) {
+        setError("Account not confirmed. Ask a manager to confirm it in the Supabase dashboard, or disable email confirmation in Auth settings.");
       } else if (msg.toLowerCase().includes("too many requests")) {
-        toast.error("Too many attempts — please wait a moment and try again.");
+        setError("Too many attempts — please wait a moment and try again.");
       } else {
-        toast.error(msg || "Sign in failed. Please try again.");
+        setError(msg || "Sign in failed. Please try again.");
       }
       return;
     }
@@ -58,9 +67,9 @@ function LoginPage() {
         .eq("id", data.user.id)
         .single();
 
-      if (profile?.deactivated) {
+      if ((profile as any)?.deactivated) {
         await supabase.auth.signOut();
-        toast.error("Your account has been deactivated. Contact a manager.");
+        setError("Your account has been deactivated. Contact a manager.");
         return;
       }
     }
@@ -80,15 +89,24 @@ function LoginPage() {
         <div className="rounded-2xl border border-border bg-card p-8 shadow-[var(--shadow-elegant)]">
           <h1 className="text-xl font-semibold">Sign in</h1>
           <p className="mt-1 text-sm text-muted-foreground">Access the KNG Interactions Portal.</p>
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+
+          {error && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5">
+              <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ""))}
+                onChange={(e) => { setError(null); setUsername(e.target.value); }}
                 autoComplete="username"
+                placeholder="your_username"
                 required
               />
             </div>
@@ -98,7 +116,7 @@ function LoginPage() {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setError(null); setPassword(e.target.value); }}
                 autoComplete="current-password"
                 required
               />

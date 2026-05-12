@@ -28,7 +28,28 @@ function internalEmail(username: string): string {
   return `${username.toLowerCase()}@kng.internal`;
 }
 
-type PageState = "form" | "pending_confirm" | "success";
+type PageState = "form" | "pending_confirm";
+
+function errorMessage(msg: string, hasCode: boolean): string {
+  if (msg.includes("Database error") || msg.includes("database error")) {
+    // Supabase wraps all trigger RAISE EXCEPTION as "Database error saving new user"
+    // We can't get the inner message, so give contextual help
+    if (!hasCode) {
+      return "There are already accounts in the system — a signup code is required. Ask a manager for one.";
+    }
+    return "Signup failed. Your code may be invalid, already used, or revoked. Ask a manager for a new one.";
+  }
+  if (msg.includes("already registered") || msg.toLowerCase().includes("user already registered")) {
+    return "That username is already taken. Try a different one.";
+  }
+  if (msg.includes("Password should")) {
+    return msg;
+  }
+  if (msg.toLowerCase().includes("rate limit")) {
+    return "Too many attempts — please wait a moment and try again.";
+  }
+  return msg || "Signup failed. Please try again.";
+}
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -64,31 +85,20 @@ function SignupPage() {
     setLoading(false);
 
     if (authErr) {
-      const msg = authErr.message ?? "";
-      if (msg.includes("Signup code required")) {
-        setError("A signup code is required. Get one from an AUX+.");
-      } else if (msg.includes("Invalid or used signup code")) {
-        setError("That code is invalid or has already been used.");
-      } else if (msg.toLowerCase().includes("already registered") || msg.toLowerCase().includes("user already registered")) {
-        setError("That username is already taken. Try a different one.");
-      } else if (msg.includes("Database error")) {
-        setError("Signup failed — your code may be invalid or already used.");
-      } else {
-        setError(msg || "Signup failed. Please try again.");
-      }
+      setError(errorMessage(authErr.message ?? "", parsed.data.signup_code.length > 0));
       return;
     }
 
     if (data.session) {
-      // Logged in immediately — no email confirmation required
+      // Signed in immediately — email confirmation is off
       navigate({ to: "/dashboard" });
     } else if (data.user) {
-      // Account created but Supabase requires email confirmation.
-      // Since we use internal emails, a manager must confirm via Supabase dashboard,
-      // OR email confirmation should be disabled in Supabase Auth settings.
+      // User created but email confirmation is required in Supabase settings
       setPage("pending_confirm");
     } else {
-      setError("Something went wrong. Please try again.");
+      // Supabase silently returned nothing — usually means username already exists
+      // (Supabase prevents email enumeration by returning success-looking response)
+      setError("That username may already be taken, or signup failed. Try a different username or contact a manager.");
     }
   }
 
@@ -106,22 +116,21 @@ function SignupPage() {
             <div className="grid h-14 w-14 place-items-center rounded-full bg-amber-500/10 mx-auto">
               <MailCheck className="h-7 w-7 text-amber-400" />
             </div>
-            <h1 className="text-xl font-semibold">Account created — needs confirmation</h1>
+            <h1 className="text-xl font-semibold">One last step</h1>
             <p className="text-sm text-muted-foreground">
-              Your portal uses internal accounts, but Supabase email confirmation is still turned on.
+              Account created, but your Supabase project has email confirmation turned on.
+              Since this portal uses internal accounts, no email will arrive.
             </p>
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-left space-y-2">
-              <p className="text-sm font-medium text-amber-300">Manager: fix this once</p>
+              <p className="text-sm font-medium text-amber-300">Fix this once (manager only)</p>
               <ol className="text-xs text-muted-foreground list-decimal list-inside space-y-1">
-                <li>Go to your <strong>Supabase dashboard</strong></li>
-                <li>Authentication → Providers → Email</li>
+                <li>Open your <strong>Supabase dashboard</strong></li>
+                <li>Go to Authentication → Providers → <strong>Email</strong></li>
                 <li>Turn off <strong>"Confirm email"</strong> and save</li>
-                <li>Come back and sign up again</li>
+                <li>Delete the pending user under Authentication → Users</li>
+                <li>Sign up again — it will work immediately</li>
               </ol>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Alternatively, a manager can confirm the account manually in Supabase → Authentication → Users.
-            </p>
             <Link to="/login" className="block text-sm text-primary hover:underline">Back to sign in</Link>
           </div>
         </div>
