@@ -36,7 +36,7 @@ function CompQueue() {
   if (!isAuxPlus) return <p className="text-sm text-muted-foreground">AUX+ only.</p>;
 
   async function copyCmd(w: any) {
-    const cmd = `!additem ${w.winner_id} ${w.prize_code} ${w.quantity}`;
+    const cmd = `!additem ${w.winner_id} ${w.prize_code} ${w.quantity} ENTERTAINMENT WINNER`;
     await navigator.clipboard.writeText(cmd);
     toast.success("Copied: " + cmd);
   }
@@ -68,7 +68,7 @@ function CompQueue() {
                     Winner: <span className="font-mono">{w.winner_id}</span>
                     {ix && ` · ${ix.title} · ${DEPT_LABEL[ix.department as Department]}`}
                   </p>
-                  <p className="text-[11px] font-mono text-muted-foreground">!additem {w.winner_id} {w.prize_code} {w.quantity}</p>
+                  <p className="text-[11px] font-mono text-muted-foreground">!additem {w.winner_id} {w.prize_code} {w.quantity} ENTERTAINMENT WINNER</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => copyCmd(w)}><Copy className="h-3 w-3 mr-1" /> Copy</Button>
                 <Button size="sm" onClick={() => markDone(w)}><Check className="h-3 w-3 mr-1" /> Done</Button>

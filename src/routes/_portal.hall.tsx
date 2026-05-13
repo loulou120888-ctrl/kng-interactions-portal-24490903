@@ -130,34 +130,19 @@ function HallOfFame() {
           if (hasHole) {
             const holeW = maxX - minX + 1;
             const holeH = maxY - minY + 1;
-            const scale = Math.max(holeW / img.width, holeH / img.height);
-            const dw = img.width * scale, dh = img.height * scale;
-            const dx = minX + (holeW - dw) / 2;
-            const dy = minY + (holeH - dh) / 2;
-            ctx.save();
-            ctx.beginPath(); ctx.rect(minX, minY, holeW, holeH); ctx.clip();
-            ctx.drawImage(img, dx, dy, dw, dh);
-            ctx.restore();
+            ctx.drawImage(img, minX, minY, holeW, holeH);
           } else {
-            const scale = Math.max(W / img.width, H / img.height);
-            const dw = img.width * scale, dh = img.height * scale;
-            ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+            ctx.drawImage(img, 0, 0, W, H);
           }
 
           ctx.drawImage(frameImg, 0, 0, W, H);
         };
         frameImg.src = frame.imageUrl;
       } else {
-        // Built-in frame: draw photo with border inset
+        // Built-in frame: draw photo with border inset, stretched to fill
         const t = frame.thickness ?? 28;
         const innerW = W - t * 2, innerH = H - t * 2;
-        const scale = Math.max(innerW / img.width, innerH / img.height);
-        const dw = img.width * scale, dh = img.height * scale;
-        const dx = t + (innerW - dw) / 2, dy = t + (innerH - dh) / 2;
-        ctx.save();
-        ctx.beginPath(); ctx.rect(t, t, innerW, innerH); ctx.clip();
-        ctx.drawImage(img, dx, dy, dw, dh);
-        ctx.restore();
+        ctx.drawImage(img, t, t, innerW, innerH);
         ctx.strokeStyle = frame.color ?? "#fff";
         ctx.lineWidth = t;
         ctx.strokeRect(t / 2, t / 2, W - t, H - t);
