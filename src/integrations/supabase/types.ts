@@ -64,30 +64,6 @@ export type Database = {
         }
         Relationships: []
       }
-      hall_of_fame_frames: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          image_url: string
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          image_url: string
-          name: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          image_url?: string
-          name?: string
-        }
-        Relationships: []
-      }
       hall_of_fame: {
         Row: {
           author_id: string
@@ -115,6 +91,30 @@ export type Database = {
           id?: string
           image_url?: string
           winner_id?: string | null
+        }
+        Relationships: []
+      }
+      hall_of_fame_frames: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          image_url: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          image_url: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          image_url?: string
+          name?: string
         }
         Relationships: []
       }
@@ -195,7 +195,6 @@ export type Database = {
           department: Database["public"]["Enums"]["department"]
           f3_message: string | null
           id: string
-          location: string | null
           poster_image_url: string | null
           poster_message: string | null
           slot_id: string | null
@@ -209,7 +208,6 @@ export type Database = {
           department: Database["public"]["Enums"]["department"]
           f3_message?: string | null
           id?: string
-          location?: string | null
           poster_image_url?: string | null
           poster_message?: string | null
           slot_id?: string | null
@@ -223,7 +221,6 @@ export type Database = {
           department?: Database["public"]["Enums"]["department"]
           f3_message?: string | null
           id?: string
-          location?: string | null
           poster_image_url?: string | null
           poster_message?: string | null
           slot_id?: string | null
@@ -310,7 +307,6 @@ export type Database = {
           id: string
           status: string
           updated_at: string
-          username: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -321,7 +317,6 @@ export type Database = {
           id: string
           status?: string
           updated_at?: string
-          username?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -332,7 +327,6 @@ export type Database = {
           id?: string
           status?: string
           updated_at?: string
-          username?: string | null
         }
         Relationships: []
       }
