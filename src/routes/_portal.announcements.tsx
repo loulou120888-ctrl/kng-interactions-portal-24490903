@@ -12,9 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Megaphone, Eye, Plus } from "lucide-react";
 
-export const Route = createFileRoute("/_portal/announcements")({
-  head: () => ({ meta: [{ title: "Announcements — KNG" }] }),
-  component: Announcements,
+export const Route = createFileRoute("/_portal/announcements")({  component: Announcements,
 });
 
 function Announcements() {

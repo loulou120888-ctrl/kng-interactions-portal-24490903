@@ -6,9 +6,7 @@ import { Input } from "@/components/ui/input";
 import { DEPT_LABEL, DEPT_BG, type Department } from "@/lib/portal";
 import { Search } from "lucide-react";
 
-export const Route = createFileRoute("/_portal/search")({
-  head: () => ({ meta: [{ title: "Search — KNG Portal" }] }),
-  component: SearchPage,
+export const Route = createFileRoute("/_portal/search")({  component: SearchPage,
 });
 
 function SearchPage() {

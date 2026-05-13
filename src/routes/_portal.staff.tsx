@@ -13,9 +13,7 @@ import { toast } from "sonner";
 import { ALL_ROLES, ROLE_LABEL, DEPARTMENTS, DEPT_LABEL, ROLE_RANK, type Department, type Role } from "@/lib/portal";
 import { UserCog, Pencil, UserX, UserCheck } from "lucide-react";
 
-export const Route = createFileRoute("/_portal/staff")({
-  head: () => ({ meta: [{ title: "Posters / Staff — KNG" }] }),
-  component: StaffPage,
+export const Route = createFileRoute("/_portal/staff")({  component: StaffPage,
 });
 
 interface Staff {

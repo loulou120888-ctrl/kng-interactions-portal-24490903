@@ -5,9 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Trophy } from "lucide-react";
 
-export const Route = createFileRoute("/_portal/leaderboard")({
-  head: () => ({ meta: [{ title: "Leaderboard — KNG" }] }),
-  component: Leaderboard,
+export const Route = createFileRoute("/_portal/leaderboard")({  component: Leaderboard,
 });
 
 function Leaderboard() {

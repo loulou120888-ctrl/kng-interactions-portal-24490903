@@ -7,9 +7,7 @@ import { DEPT_LABEL, DEPT_BG, type Department } from "@/lib/portal";
 import { Copy, Check, ImageIcon, FileText, Radio } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_portal/posters")({
-  head: () => ({ meta: [{ title: "Posters — KNG Portal" }] }),
-  component: PostersPage,
+export const Route = createFileRoute("/_portal/posters")({  component: PostersPage,
 });
 
 function useCopy() {

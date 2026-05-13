@@ -4,9 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 
-export const Route = createFileRoute("/_portal/archives")({
-  head: () => ({ meta: [{ title: "Archives — KNG" }] }),
-  component: Archives,
+export const Route = createFileRoute("/_portal/archives")({  component: Archives,
 });
 
 function Archives() {

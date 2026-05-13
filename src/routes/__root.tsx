@@ -4,12 +4,10 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  HeadContent,
-  Scripts,
 } from "@tanstack/react-router";
 
-import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/use-auth";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -69,49 +67,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "KNG interactions portal" },
-      { name: "description", content: "Interaction Nexus is a modern, dark-mode portal for tracking staff interactions and activities." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "KNG interactions portal" },
-      { property: "og:description", content: "Interaction Nexus is a modern, dark-mode portal for tracking staff interactions and activities." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "KNG interactions portal" },
-      { name: "twitter:description", content: "Interaction Nexus is a modern, dark-mode portal for tracking staff interactions and activities." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0d3fb564-b1ec-4e21-89a0-0da07bf20cee/id-preview-cca48ae0--30c83edd-632f-40cc-ae4b-f15d75d8dfce.lovable.app-1778620441806.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0d3fb564-b1ec-4e21-89a0-0da07bf20cee/id-preview-cca48ae0--30c83edd-632f-40cc-ae4b-f15d75d8dfce.lovable.app-1778620441806.png" },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
-  }),
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
-
-function RootShell({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -120,6 +79,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Outlet />
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );

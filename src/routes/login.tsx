@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Sign in — KNG Interactions Portal" }] }),
-  component: LoginPage,
+export const Route = createFileRoute("/login")({  component: LoginPage,
 });
 
 function internalEmail(username: string): string {

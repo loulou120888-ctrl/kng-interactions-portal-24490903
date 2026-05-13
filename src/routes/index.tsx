@@ -2,14 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Crown, ArrowRight, Calendar, Trophy, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "KNG Interactions Portal" },
-      { name: "description", content: "Schedule, log, and celebrate every event, party, and entertainment session." },
-    ],
-  }),
-  component: Landing,
+export const Route = createFileRoute("/")({  component: Landing,
 });
 
 function Landing() {

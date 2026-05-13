@@ -6,9 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export const Route = createFileRoute("/setup")({
-  head: () => ({ meta: [{ title: "Portal Setup — KNG" }] }),
-  component: SetupPage,
+export const Route = createFileRoute("/setup")({  component: SetupPage,
 });
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;

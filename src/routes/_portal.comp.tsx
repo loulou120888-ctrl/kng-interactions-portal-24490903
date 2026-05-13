@@ -9,9 +9,7 @@ import { toast } from "sonner";
 import { Copy, Check } from "lucide-react";
 import { DEPT_LABEL, type Department } from "@/lib/portal";
 
-export const Route = createFileRoute("/_portal/comp")({
-  head: () => ({ meta: [{ title: "Comp Queue — KNG" }] }),
-  component: CompQueue,
+export const Route = createFileRoute("/_portal/comp")({  component: CompQueue,
 });
 
 function CompQueue() {

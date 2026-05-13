@@ -10,9 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { Image as ImageIcon, Copy, Save, Upload, Plus, Trash2, FrameIcon } from "lucide-react";
 
-export const Route = createFileRoute("/_portal/hall")({
-  head: () => ({ meta: [{ title: "Hall of Fame — KNG" }] }),
-  component: HallOfFame,
+export const Route = createFileRoute("/_portal/hall")({  component: HallOfFame,
 });
 
 const BUILTIN_FRAMES = [

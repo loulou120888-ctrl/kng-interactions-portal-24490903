@@ -8,7 +8,6 @@ import { DEPT_LABEL, ROLE_LABEL } from "@/lib/portal";
 import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_portal/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — KNG Portal" }] }),
   component: Dashboard,
 });
 

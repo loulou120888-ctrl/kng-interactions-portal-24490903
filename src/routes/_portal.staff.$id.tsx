@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { ROLE_LABEL, DEPT_LABEL, ROLE_RANK, type Role, type Department } from "@/lib/portal";
 
-export const Route = createFileRoute("/_portal/staff/$id")({
-  head: () => ({ meta: [{ title: "Staff profile — KNG" }] }),
-  component: StaffProfile,
+export const Route = createFileRoute("/_portal/staff/$id")({  component: StaffProfile,
 });
 
 function StaffProfile() {

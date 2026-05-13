@@ -13,9 +13,7 @@ import { toast } from "sonner";
 import { Plus, Copy, Trash2 } from "lucide-react";
 import { ALL_ROLES, ROLE_LABEL, DEPARTMENTS, DEPT_LABEL, type Role, type Department } from "@/lib/portal";
 
-export const Route = createFileRoute("/_portal/admin")({
-  head: () => ({ meta: [{ title: "Admin — KNG" }] }),
-  component: Admin,
+export const Route = createFileRoute("/_portal/admin")({  component: Admin,
 });
 
 function Admin() {

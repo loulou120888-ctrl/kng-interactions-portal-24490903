@@ -9,9 +9,7 @@ import { DEPT_LABEL, DEPT_BG, type Department } from "@/lib/portal";
 import { Search, Copy, Check, ChevronDown, ChevronUp, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_portal/interactions")({
-  head: () => ({ meta: [{ title: "Interactions — KNG Portal" }] }),
-  component: Interactions,
+export const Route = createFileRoute("/_portal/interactions")({  component: Interactions,
 });
 
 function CopyButton({ text }: { text: string }) {
