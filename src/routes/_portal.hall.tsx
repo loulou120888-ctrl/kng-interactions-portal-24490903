@@ -342,16 +342,45 @@ function FrameUploadDialog({ open, onOpenChange, userId, onUploaded }: {
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  // region in 0..1 fractions
+  const [region, setRegion] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
 
-  function reset() { setName(""); setFile(null); setPreview(null); }
+  function reset() { setName(""); setFile(null); setPreview(null); setRegion(null); setDrag(null); }
 
   function selectFile(f: File) {
     setFile(f);
     setPreview(URL.createObjectURL(f));
+    setRegion({ x: 0.2, y: 0.2, w: 0.6, h: 0.6 });
   }
+
+  function onDown(e: React.PointerEvent) {
+    if (!boxRef.current) return;
+    (e.target as Element).setPointerCapture(e.pointerId);
+    const r = boxRef.current.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width;
+    const y = (e.clientY - r.top) / r.height;
+    setDrag({ x, y });
+    setRegion({ x, y, w: 0, h: 0 });
+  }
+  function onMove(e: React.PointerEvent) {
+    if (!drag || !boxRef.current) return;
+    const r = boxRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+    setRegion({
+      x: Math.min(drag.x, x),
+      y: Math.min(drag.y, y),
+      w: Math.abs(x - drag.x),
+      h: Math.abs(y - drag.y),
+    });
+  }
+  function onUp() { setDrag(null); }
 
   async function upload() {
     if (!file || !name.trim()) { toast.error("Name and image required"); return; }
+    if (!region || region.w < 0.02 || region.h < 0.02) { toast.error("Drag a box on the preview to mark where the photo fits"); return; }
     setBusy(true);
     const path = `${userId}/${Date.now()}-${file.name}`;
     const { error: se } = await supabase.storage.from("hof-frames").upload(path, file, { contentType: file.type });
@@ -361,7 +390,11 @@ function FrameUploadDialog({ open, onOpenChange, userId, onUploaded }: {
       name: name.trim(),
       image_url: urlData.publicUrl,
       created_by: userId,
-    });
+      region_x: region.x,
+      region_y: region.y,
+      region_w: region.w,
+      region_h: region.h,
+    } as any);
     setBusy(false);
     if (de) toast.error(de.message);
     else { toast.success("Frame uploaded"); reset(); onUploaded(); }
@@ -372,24 +405,47 @@ function FrameUploadDialog({ open, onOpenChange, userId, onUploaded }: {
       <DialogContent>
         <DialogHeader><DialogTitle>Upload custom frame</DialogTitle></DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Upload a PNG with a transparent centre — the winner photo will show through the hole.
-          Recommended: 800×800 px.
+          Upload your frame image, then drag a box on the preview to mark exactly where the winner photo should fit.
+          Recommended: square (e.g. 800×800 px).
         </p>
         <div className="space-y-4 mt-2">
           <div className="space-y-2">
             <Label>Frame name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Diamond" />
           </div>
-          <input ref={fileRef} type="file" accept="image/png,image/webp" hidden onChange={(e) => e.target.files?.[0] && selectFile(e.target.files[0])} />
+          <input ref={fileRef} type="file" accept="image/png,image/webp,image/jpeg" hidden onChange={(e) => e.target.files?.[0] && selectFile(e.target.files[0])} />
           <Button variant="outline" className="w-full" onClick={() => fileRef.current?.click()}>
-            <Upload className="h-4 w-4 mr-2" /> {file ? file.name : "Choose PNG frame image"}
+            <Upload className="h-4 w-4 mr-2" /> {file ? file.name : "Choose frame image"}
           </Button>
           {preview && (
-            <div className="mx-auto w-40 h-40 rounded-lg overflow-hidden border border-border bg-card/40 relative">
-              <img src={preview} alt="frame preview" className="w-full h-full object-contain" />
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Drag on the preview to mark the photo area</Label>
+              <div
+                ref={boxRef}
+                onPointerDown={onDown}
+                onPointerMove={onMove}
+                onPointerUp={onUp}
+                className="mx-auto w-64 h-64 rounded-lg overflow-hidden border border-border bg-[repeating-conic-gradient(#222_0_25%,#1a1a1a_0_50%)] [background-size:16px_16px] relative cursor-crosshair touch-none select-none"
+              >
+                <img src={preview} alt="frame preview" className="w-full h-full object-contain pointer-events-none" />
+                {region && region.w > 0 && region.h > 0 && (
+                  <div
+                    className="absolute border-2 border-primary bg-primary/20 pointer-events-none"
+                    style={{
+                      left: `${region.x * 100}%`,
+                      top: `${region.y * 100}%`,
+                      width: `${region.w * 100}%`,
+                      height: `${region.h * 100}%`,
+                    }}
+                  />
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground text-center">
+                {region ? `Region: ${(region.w * 100).toFixed(0)}% × ${(region.h * 100).toFixed(0)}%` : "No region set"}
+              </p>
             </div>
           )}
-          <Button className="w-full" onClick={upload} disabled={busy || !file || !name.trim()}>
+          <Button className="w-full" onClick={upload} disabled={busy || !file || !name.trim() || !region || region.w < 0.02}>
             {busy ? "Uploading…" : "Upload frame"}
           </Button>
         </div>
