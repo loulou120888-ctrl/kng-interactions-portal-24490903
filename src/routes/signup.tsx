@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export const Route = createFileRoute("/signup")({  component: SignupPage,
-});
+export const Route = createFileRoute("/signup")({ component: SignupPage });
 
 const schema = z.object({
-  signup_code: z.string().trim().max(64),
+  signup_code: z
+    .string()
+    .trim()
+    .min(1, "Signup code is required")
+    .max(64),
   username: z
     .string()
     .trim()
@@ -26,28 +29,21 @@ function internalEmail(username: string): string {
   return `${username.toLowerCase()}@kngportal.com`;
 }
 
-type PageState = "form" | "pending_confirm";
-
-function errorMessage(msg: string, hasCode: boolean): string {
-  if (msg.includes("Database error") || msg.includes("database error")) {
-    // Supabase wraps all trigger RAISE EXCEPTION as "Database error saving new user"
-    // We can't get the inner message, so give contextual help
-    if (!hasCode) {
-      return "There are already accounts in the system — a signup code is required. Ask a manager for one.";
-    }
-    return "Signup failed. Your code may be invalid, already used, or revoked. Ask a manager for a new one.";
-  }
+function authErrorMessage(msg: string): string {
   if (msg.includes("already registered") || msg.toLowerCase().includes("user already registered")) {
     return "That username is already taken. Try a different one.";
   }
-  if (msg.includes("Password should")) {
-    return msg;
-  }
+  if (msg.includes("Password should")) return msg;
   if (msg.toLowerCase().includes("rate limit")) {
-    return "Too many attempts — please wait a moment and try again.";
+    return "Too many attempts — please wait a few minutes and try again.";
+  }
+  if (msg.includes("Database error") || msg.includes("database error")) {
+    return "Account creation failed. Please try again or contact a manager.";
   }
   return msg || "Signup failed. Please try again.";
 }
+
+type PageState = "form" | "pending_confirm";
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -63,40 +59,75 @@ function SignupPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError(null);
 
     const normalized = { ...form, username: form.username.toLowerCase().trim() };
     const parsed = schema.safeParse(normalized);
-    if (!parsed.success) { setError(parsed.error.issues[0].message); return; }
+    if (!parsed.success) {
+      setError(parsed.error.issues[0].message);
+      return;
+    }
 
     setLoading(true);
+
+    // ── Step 1: pre-validate signup code (no auth call yet) ──────────────────
+    // This avoids burning Supabase rate limit slots on invalid codes.
+    const { data: codeRow, error: codeErr } = await supabase
+      .from("signup_codes")
+      .select("id, revoked, used_by")
+      .eq("code", parsed.data.signup_code.trim().toUpperCase())
+      .maybeSingle();
+
+    if (codeErr) {
+      setError("Could not validate signup code. Check your connection and try again.");
+      setLoading(false);
+      return;
+    }
+    if (!codeRow) {
+      setError("Invalid signup code. Double-check it and try again, or ask a manager for a new one.");
+      setLoading(false);
+      return;
+    }
+    if (codeRow.revoked) {
+      setError("That signup code has been revoked. Ask a manager for a new one.");
+      setLoading(false);
+      return;
+    }
+    if (codeRow.used_by) {
+      setError("That signup code has already been used. Each code is one-time only — ask a manager for a new one.");
+      setLoading(false);
+      return;
+    }
+
+    // ── Step 2: single auth call, only reached with a valid unused code ───────
     const { data, error: authErr } = await supabase.auth.signUp({
       email: internalEmail(parsed.data.username),
       password: parsed.data.password,
       options: {
         data: {
           display_name: parsed.data.display_name,
-          signup_code: parsed.data.signup_code,
+          signup_code: parsed.data.signup_code.trim().toUpperCase(),
         },
       },
     });
     setLoading(false);
 
     if (authErr) {
-      setError(errorMessage(authErr.message ?? "", parsed.data.signup_code.length > 0));
+      setError(authErrorMessage(authErr.message ?? ""));
       return;
     }
 
     if (data.session) {
-      // Signed in immediately — email confirmation is off
+      // Signed in immediately — email confirmation is disabled (correct setup)
       navigate({ to: "/dashboard" });
-    } else if (data.user) {
-      // User created but email confirmation is required in Supabase settings
+    } else if (data.user && !data.session) {
+      // Email confirmation is ON — user created but can't sign in yet
       setPage("pending_confirm");
     } else {
-      // Supabase silently returned nothing — usually means username already exists
-      // (Supabase prevents email enumeration by returning success-looking response)
-      setError("That username may already be taken, or signup failed. Try a different username or contact a manager.");
+      // Supabase returned no user and no session — email already exists
+      // (Supabase hides this to prevent email enumeration)
+      setError("That username is already taken. Try a different one.");
     }
   }
 
@@ -114,22 +145,26 @@ function SignupPage() {
             <div className="grid h-14 w-14 place-items-center rounded-full bg-amber-500/10 mx-auto">
               <MailCheck className="h-7 w-7 text-amber-400" />
             </div>
-            <h1 className="text-xl font-semibold">One last step</h1>
+            <h1 className="text-xl font-semibold">One configuration step needed</h1>
             <p className="text-sm text-muted-foreground">
-              Account created, but your Supabase project has email confirmation turned on.
-              Since this portal uses internal accounts, no email will arrive.
+              Your account was created, but Supabase has email confirmation turned on.
+              Since portal accounts don't use real email addresses, no confirmation will arrive.
             </p>
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-left space-y-2">
-              <p className="text-sm font-medium text-amber-300">Fix this once (manager only)</p>
-              <ol className="text-xs text-muted-foreground list-decimal list-inside space-y-1">
-                <li>Open your <strong>Supabase dashboard</strong></li>
-                <li>Go to Authentication → Providers → <strong>Email</strong></li>
-                <li>Turn off <strong>"Confirm email"</strong> and save</li>
-                <li>Delete the pending user under Authentication → Users</li>
-                <li>Sign up again — it will work immediately</li>
+              <p className="text-sm font-medium text-amber-300">Fix this once in your Supabase dashboard (manager only)</p>
+              <ol className="text-xs text-muted-foreground list-decimal list-inside space-y-1.5">
+                <li>Open <strong className="text-foreground">Supabase → Authentication → Providers → Email</strong></li>
+                <li>Turn off <strong className="text-foreground">"Confirm email"</strong> and save</li>
+                <li>Go to <strong className="text-foreground">Authentication → Users</strong> and delete the pending account just created</li>
+                <li>Sign up again — it will work immediately with no confirmation required</li>
               </ol>
             </div>
-            <Link to="/login" className="block text-sm text-primary hover:underline">Back to sign in</Link>
+            <p className="text-xs text-muted-foreground">
+              Once "Confirm email" is off, all future signups will work instantly.
+            </p>
+            <Link to="/login" className="block text-sm text-primary hover:underline">
+              Back to sign in
+            </Link>
           </div>
         </div>
       </div>
@@ -163,9 +198,11 @@ function SignupPage() {
               <Label>Signup code</Label>
               <Input
                 value={form.signup_code}
-                onChange={(e) => set("signup_code", e.target.value)}
-                placeholder="KNG-XXXX"
+                onChange={(e) => set("signup_code", e.target.value.toUpperCase())}
+                placeholder="KNG-XXXXXX"
                 autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </div>
             <div className="space-y-2">
@@ -201,7 +238,7 @@ function SignupPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creating…" : "Create account"}
+              {loading ? "Checking code…" : "Create account"}
             </Button>
           </form>
           <p className="mt-6 text-center text-sm text-muted-foreground">
