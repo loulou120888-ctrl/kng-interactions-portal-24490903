@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { api } from "@/lib/api";
-import { isAuxPlus, isManager, topRole, type Role } from "@/lib/portal";
+import { isAdmPlus, isAuxPlus, isManager, topRole, type Role } from "@/lib/portal";
 import { toast } from "sonner";
 
 interface AuthUser {
@@ -15,6 +15,7 @@ interface AuthContextValue {
   roles: Role[];
   topRole: Role;
   isAuxPlus: boolean;
+  isAdmPlus: boolean;
   isManager: boolean;
   displayName: string;
   signOut: () => Promise<void>;
@@ -84,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     roles,
     topRole: topRole(roles),
     isAuxPlus: isAuxPlus(roles),
+    isAdmPlus: isAdmPlus(roles),
     isManager: isManager(roles),
     displayName: user?.displayName ?? "",
     signOut,
