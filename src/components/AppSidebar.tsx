@@ -50,7 +50,7 @@ export function AppSidebar() {
   const { user, isAuxPlus, isManager, topRole, signOut, displayName } = useAuth();
 
   // Show display name if loaded, otherwise parse username from internal email
-  const username = displayName || user?.email?.replace(/@kng\.internal$/, "") || user?.email || "—";
+  const username = displayName || user?.email?.replace(/@kngportal\.com$/, "") || user?.email || "—";
   const initial = username[0]?.toUpperCase() ?? "?";
 
   return (

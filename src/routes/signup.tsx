@@ -23,7 +23,7 @@ const schema = z.object({
 });
 
 function internalEmail(username: string): string {
-  return `${username.toLowerCase()}@kng.internal`;
+  return `${username.toLowerCase()}@kngportal.com`;
 }
 
 type PageState = "form" | "pending_confirm";
