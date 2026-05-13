@@ -101,6 +101,10 @@ export type Database = {
           id: string
           image_url: string
           name: string
+          region_h: number | null
+          region_w: number | null
+          region_x: number | null
+          region_y: number | null
         }
         Insert: {
           created_at?: string
@@ -108,6 +112,10 @@ export type Database = {
           id?: string
           image_url: string
           name: string
+          region_h?: number | null
+          region_w?: number | null
+          region_x?: number | null
+          region_y?: number | null
         }
         Update: {
           created_at?: string
@@ -115,6 +123,10 @@ export type Database = {
           id?: string
           image_url?: string
           name?: string
+          region_h?: number | null
+          region_w?: number | null
+          region_x?: number | null
+          region_y?: number | null
         }
         Relationships: []
       }
