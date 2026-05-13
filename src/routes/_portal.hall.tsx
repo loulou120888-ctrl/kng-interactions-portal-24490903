@@ -87,15 +87,50 @@ function HallOfFame() {
     img.crossOrigin = "anonymous";
     img.onload = () => {
       if (frame.imageUrl) {
-        // Custom frame: draw photo cover-fit to full canvas, then overlay frame image
-        const scale = Math.max(W / img.width, H / img.height);
-        const dw = img.width * scale, dh = img.height * scale;
-        const dx = (W - dw) / 2, dy = (H - dh) / 2;
-        ctx.drawImage(img, dx, dy, dw, dh);
-
+        // Custom frame: detect transparent hole, fit photo into it exactly
         const frameImg = new Image();
         frameImg.crossOrigin = "anonymous";
         frameImg.onload = () => {
+          // Analyse frame pixels to find the bounding box of the transparent hole
+          const tmpCanvas = document.createElement("canvas");
+          tmpCanvas.width = W; tmpCanvas.height = H;
+          const tmpCtx = tmpCanvas.getContext("2d")!;
+          tmpCtx.drawImage(frameImg, 0, 0, W, H);
+          const { data } = tmpCtx.getImageData(0, 0, W, H);
+          let minX = W, maxX = 0, minY = H, maxY = 0;
+          for (let y = 0; y < H; y++) {
+            for (let x = 0; x < W; x++) {
+              const alpha = data[(y * W + x) * 4 + 3];
+              if (alpha < 128) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+              }
+            }
+          }
+
+          // Fallback: if no transparent area found, cover-fit the whole canvas
+          const hasHole = maxX > minX && maxY > minY;
+          ctx.fillStyle = "#0a0a0a"; ctx.fillRect(0, 0, W, H);
+
+          if (hasHole) {
+            const holeW = maxX - minX + 1;
+            const holeH = maxY - minY + 1;
+            const scale = Math.max(holeW / img.width, holeH / img.height);
+            const dw = img.width * scale, dh = img.height * scale;
+            const dx = minX + (holeW - dw) / 2;
+            const dy = minY + (holeH - dh) / 2;
+            ctx.save();
+            ctx.beginPath(); ctx.rect(minX, minY, holeW, holeH); ctx.clip();
+            ctx.drawImage(img, dx, dy, dw, dh);
+            ctx.restore();
+          } else {
+            const scale = Math.max(W / img.width, H / img.height);
+            const dw = img.width * scale, dh = img.height * scale;
+            ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+          }
+
           ctx.drawImage(frameImg, 0, 0, W, H);
         };
         frameImg.src = frame.imageUrl;
@@ -160,6 +195,15 @@ function HallOfFame() {
     const { error } = await supabase.from("hall_of_fame_frames").delete().eq("id", frame.customDbId);
     if (error) toast.error(error.message);
     else { toast.success("Frame deleted"); loadFrames(); }
+  }
+
+  async function deleteWallItem(id: string) {
+    const { error } = await supabase.from("hall_of_fame").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Entry removed");
+      setItems((prev) => prev.filter((it) => it.id !== id));
+    }
   }
 
   const allFrames: FrameOption[] = [...BUILTIN_FRAMES, ...customFrames];
@@ -238,8 +282,17 @@ function HallOfFame() {
         <h2 className="text-sm font-semibold tracking-wide mb-3">Wall</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {items.map((it) => (
-            <Card key={it.id} className="rounded-xl bg-card/60 overflow-hidden">
+            <Card key={it.id} className="rounded-xl bg-card/60 overflow-hidden relative group">
               <img src={it.image_url} alt={it.caption ?? "Winner"} className="w-full aspect-square object-cover" />
+              {isManager && (
+                <button
+                  onClick={() => deleteWallItem(it.id)}
+                  className="absolute top-1.5 right-1.5 rounded-full bg-destructive text-destructive-foreground p-1 opacity-0 group-hover:opacity-100 transition shadow"
+                  title="Remove entry"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
               {(it.winner_id || it.caption) && (
                 <div className="p-2 text-xs">
                   {it.winner_id && <p className="font-mono">{it.winner_id}</p>}
