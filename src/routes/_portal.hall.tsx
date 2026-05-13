@@ -97,27 +97,36 @@ function HallOfFame() {
         const frameImg = new Image();
         frameImg.crossOrigin = "anonymous";
         frameImg.onload = () => {
-          // Analyse frame pixels to find the bounding box of the transparent hole
-          const tmpCanvas = document.createElement("canvas");
-          tmpCanvas.width = W; tmpCanvas.height = H;
-          const tmpCtx = tmpCanvas.getContext("2d")!;
-          tmpCtx.drawImage(frameImg, 0, 0, W, H);
-          const { data } = tmpCtx.getImageData(0, 0, W, H);
           let minX = W, maxX = 0, minY = H, maxY = 0;
-          for (let y = 0; y < H; y++) {
-            for (let x = 0; x < W; x++) {
-              const alpha = data[(y * W + x) * 4 + 3];
-              if (alpha < 128) {
-                if (x < minX) minX = x;
-                if (x > maxX) maxX = x;
-                if (y < minY) minY = y;
-                if (y > maxY) maxY = y;
+          let hasHole = false;
+
+          if (frame.region) {
+            minX = Math.round(frame.region.x * W);
+            minY = Math.round(frame.region.y * H);
+            maxX = Math.round((frame.region.x + frame.region.w) * W) - 1;
+            maxY = Math.round((frame.region.y + frame.region.h) * H) - 1;
+            hasHole = maxX > minX && maxY > minY;
+          } else {
+            // Fallback: detect transparent hole via alpha
+            const tmpCanvas = document.createElement("canvas");
+            tmpCanvas.width = W; tmpCanvas.height = H;
+            const tmpCtx = tmpCanvas.getContext("2d")!;
+            tmpCtx.drawImage(frameImg, 0, 0, W, H);
+            const { data } = tmpCtx.getImageData(0, 0, W, H);
+            for (let y = 0; y < H; y++) {
+              for (let x = 0; x < W; x++) {
+                const alpha = data[(y * W + x) * 4 + 3];
+                if (alpha < 128) {
+                  if (x < minX) minX = x;
+                  if (x > maxX) maxX = x;
+                  if (y < minY) minY = y;
+                  if (y > maxY) maxY = y;
+                }
               }
             }
+            hasHole = maxX > minX && maxY > minY;
           }
 
-          // Fallback: if no transparent area found, cover-fit the whole canvas
-          const hasHole = maxX > minX && maxY > minY;
           ctx.fillStyle = "#0a0a0a"; ctx.fillRect(0, 0, W, H);
 
           if (hasHole) {
