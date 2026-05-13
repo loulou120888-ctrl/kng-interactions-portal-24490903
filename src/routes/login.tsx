@@ -59,7 +59,7 @@ function LoginPage() {
       return;
     }
 
-    // Check if account has been deactivated
+    // Check if account has been deactivated before letting the auth state redirect
     if (data.user) {
       const { data: profile } = await supabase
         .from("profiles")
@@ -73,8 +73,7 @@ function LoginPage() {
         return;
       }
     }
-
-    navigate({ to: "/dashboard" });
+    // Navigation is handled by the useEffect above once onAuthStateChange sets the user
   }
 
   return (
