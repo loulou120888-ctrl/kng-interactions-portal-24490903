@@ -24,6 +24,8 @@ const BUILTIN_FRAMES = [
   { id: "obsidian", name: "Obsidian", color: "oklch(0.3 0.01 260)", thickness: 36, imageUrl: null },
 ];
 
+type Region = { x: number; y: number; w: number; h: number } | null;
+
 type FrameOption = {
   id: string;
   name: string;
@@ -31,6 +33,7 @@ type FrameOption = {
   thickness?: number;
   imageUrl: string | null;
   customDbId?: string;
+  region?: Region;
 };
 
 function HallOfFame() {
