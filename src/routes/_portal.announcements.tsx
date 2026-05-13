@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Megaphone, Eye, Plus } from "lucide-react";
 
-export const Route = createFileRoute("/_portal/announcements")({  component: Announcements,
-});
+export const Route = createFileRoute("/_portal/announcements")({ component: Announcements });
 
 function Announcements() {
   const { user, isAuxPlus } = useAuth();
@@ -26,47 +25,41 @@ function Announcements() {
   const [body, setBody] = useState("");
 
   async function load() {
-    const { data } = await supabase.from("announcements").select("*").order("created_at", { ascending: false });
-    setList(data ?? []);
-    const ids = Array.from(new Set((data ?? []).map((a: any) => a.author_id)));
+    const [data, r] = await Promise.all([
+      api.announcements.list().catch(() => [] as any[]),
+      api.announcements.reads().catch(() => [] as any[]),
+    ]);
+    setList(data);
+    setReads(new Set(r.map((x: any) => x.announcement_id)));
+    const ids = Array.from(new Set(data.map((a: any) => a.author_id)));
     if (ids.length) {
-      const { data: pf } = await supabase.from("profiles").select("id, display_name").in("id", ids);
-      setAuthors(Object.fromEntries((pf ?? []).map((p: any) => [p.id, p.display_name])));
-    }
-    if (user) {
-      const { data: r } = await supabase.from("announcement_reads").select("announcement_id").eq("user_id", user.id);
-      setReads(new Set((r ?? []).map((x: any) => x.announcement_id)));
+      const pfs = await api.profiles.batch(ids as string[]).catch(() => []);
+      setAuthors(Object.fromEntries(pfs.map((p: any) => [p.id, p.display_name])));
     }
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user]);
-
-  useEffect(() => {
-    const ch = supabase.channel("ann").on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, () => load()).subscribe();
-    return () => { supabase.removeChannel(ch); };
-    // eslint-disable-next-line
-  }, [user]);
+  useEffect(() => { load(); }, [user]);
 
   async function markRead(id: string) {
     if (!user || reads.has(id)) return;
-    await supabase.from("announcement_reads").insert({ announcement_id: id, user_id: user.id });
+    await api.announcements.markRead(id).catch(() => {});
     setReads(new Set([...reads, id]));
   }
 
   async function loadReaders(id: string) {
-    const { data } = await supabase.from("announcement_reads").select("user_id, read_at").eq("announcement_id", id);
-    const ids = (data ?? []).map((r: any) => r.user_id);
-    const { data: pf } = await supabase.from("profiles").select("id, display_name").in("id", ids);
-    const nameMap = Object.fromEntries((pf ?? []).map((p: any) => [p.id, p.display_name]));
-    setReaders((r) => ({ ...r, [id]: (data ?? []).map((x: any) => ({ name: nameMap[x.user_id], at: x.read_at })) }));
+    const data = await api.announcements.readers(id).catch(() => [] as any[]);
+    const ids = data.map((r: any) => r.user_id);
+    const pfs = ids.length ? await api.profiles.batch(ids).catch(() => []) : [];
+    const nameMap = Object.fromEntries(pfs.map((p: any) => [p.id, p.display_name]));
+    setReaders(r => ({ ...r, [id]: data.map((x: any) => ({ name: nameMap[x.user_id], at: x.read_at })) }));
   }
 
   async function post() {
-    if (!user) return;
-    if (!title.trim() || !body.trim()) { toast.error("Title and body required"); return; }
-    const { error } = await supabase.from("announcements").insert({ author_id: user.id, title: title.trim(), body: body.trim() });
-    if (error) toast.error(error.message);
-    else { toast.success("Posted"); setTitle(""); setBody(""); setOpen(false); load(); }
+    if (!user || !title.trim() || !body.trim()) { toast.error("Title and body required"); return; }
+    await api.announcements.create({ title: title.trim(), body: body.trim() }).catch((e: any) => { toast.error(e.message); return null; });
+    toast.success("Posted");
+    setTitle(""); setBody(""); setOpen(false);
+    load();
   }
 
   return (
@@ -90,7 +83,6 @@ function Announcements() {
           </Dialog>
         )}
       </div>
-
       <div className="space-y-3">
         {list.length === 0 && <p className="text-sm text-muted-foreground">No announcements yet.</p>}
         {list.map((a) => (
@@ -102,9 +94,7 @@ function Announcements() {
                   {!reads.has(a.id) && <Badge>NEW</Badge>}
                 </div>
                 <p className="mt-2 text-sm whitespace-pre-wrap">{a.body}</p>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  {authors[a.author_id] ?? "—"} · {new Date(a.created_at).toLocaleString()}
-                </p>
+                <p className="mt-3 text-xs text-muted-foreground">{authors[a.author_id] ?? "—"} · {new Date(a.created_at).toLocaleString()}</p>
               </div>
               {isAuxPlus && (
                 <Button variant="ghost" size="sm" onClick={() => loadReaders(a.id)}>

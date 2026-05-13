@@ -1,27 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Crown, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export const Route = createFileRoute("/login")({  component: LoginPage,
-});
-
-function internalEmail(username: string): string {
-  return `${username.toLowerCase().trim()}@kngportal.com`;
-}
-
-function toEmail(input: string): string {
-  const trimmed = input.trim();
-  // If it already looks like an email (has @), use as-is
-  return trimmed.includes("@") ? trimmed : internalEmail(trimmed);
-}
+export const Route = createFileRoute("/login")({ component: LoginPage });
 
 function LoginPage() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -37,41 +26,15 @@ function LoginPage() {
     if (!password) { setError("Password required"); return; }
 
     setLoading(true);
-    const { data, error: authErr } = await supabase.auth.signInWithPassword({
-      email: toEmail(username),
-      password,
-    });
-    setLoading(false);
-
-    if (authErr) {
-      const msg = authErr.message ?? "";
-      if (msg.toLowerCase().includes("invalid login credentials") || msg.toLowerCase().includes("invalid credentials")) {
-        setError("Incorrect username or password.");
-      } else if (msg.toLowerCase().includes("email not confirmed")) {
-        setError("Account not confirmed. Ask a manager to confirm it in the Supabase dashboard, or disable email confirmation in Auth settings.");
-      } else if (msg.toLowerCase().includes("too many requests")) {
-        setError("Too many attempts — please wait a moment and try again.");
-      } else {
-        setError(msg || "Sign in failed. Please try again.");
-      }
-      return;
+    try {
+      const { user: u } = await api.auth.login(username.trim().toLowerCase(), password);
+      setUser(u);
+      navigate({ to: "/dashboard" });
+    } catch (err: any) {
+      setError(err.message ?? "Sign in failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    // Check if account has been deactivated before letting the auth state redirect
-    if (data.user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("deactivated")
-        .eq("id", data.user.id)
-        .single();
-
-      if ((profile as any)?.deactivated) {
-        await supabase.auth.signOut();
-        setError("Your account has been deactivated. Contact a manager.");
-        return;
-      }
-    }
-    // Navigation is handled by the useEffect above once onAuthStateChange sets the user
   }
 
   return (

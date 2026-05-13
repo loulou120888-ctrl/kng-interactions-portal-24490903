@@ -1,33 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 
-export const Route = createFileRoute("/_portal/archives")({  component: Archives,
-});
+export const Route = createFileRoute("/_portal/archives")({ component: Archives });
 
 function Archives() {
   const { isManager } = useAuth();
   const [pts, setPts] = useState<any[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, string>>({});
+  const [profileMap, setProfileMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isManager) return;
     (async () => {
-      const { data } = await supabase.from("points_log").select("user_id, amount, awarded_at");
-      setPts(data ?? []);
-      const ids = Array.from(new Set((data ?? []).map((p: any) => p.user_id)));
+      const data = await api.points.list().catch(() => [] as any[]);
+      setPts(data);
+      const ids = Array.from(new Set(data.map((p: any) => p.user_id)));
       if (ids.length) {
-        const { data: pf } = await supabase.from("profiles").select("id, display_name").in("id", ids);
-        setProfiles(Object.fromEntries((pf ?? []).map((x: any) => [x.id, x.display_name])));
+        const pfs = await api.profiles.batch(ids as string[]).catch(() => []);
+        setProfileMap(Object.fromEntries(pfs.map((x: any) => [x.id, x.display_name])));
       }
     })();
   }, [isManager]);
 
   if (!isManager) return <p className="text-sm text-muted-foreground">Managers only.</p>;
 
-  // Group by month
   const months: Record<string, Record<string, number>> = {};
   pts.forEach((p) => {
     const d = new Date(p.awarded_at);
@@ -52,7 +50,7 @@ function Archives() {
             <div className="mt-3 divide-y divide-border">
               {rows.map(([uid, n], i) => (
                 <div key={uid} className="flex items-center justify-between py-2">
-                  <span className="text-sm">{i + 1}. {profiles[uid] ?? "—"}</span>
+                  <span className="text-sm">{i + 1}. {profileMap[uid] ?? "—"}</span>
                   <span className="text-sm font-mono">{n} pts</span>
                 </div>
               ))}
