@@ -13,6 +13,7 @@ import {
   Shield,
   LogOut,
   Crown,
+  FileImage,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,6 +37,7 @@ const mainItems = [
   { title: "Events & Parties", url: "/schedule/events", icon: Calendar },
   { title: "Entertainment", url: "/schedule/entertainment", icon: Music },
   { title: "Interactions", url: "/interactions", icon: ClipboardList },
+  { title: "Posters & Promos", url: "/posters", icon: FileImage },
   { title: "Leaderboard", url: "/leaderboard", icon: Trophy },
   { title: "Announcements", url: "/announcements", icon: Megaphone },
   { title: "Hall of Fame", url: "/hall", icon: ImageIcon },
@@ -45,7 +47,11 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const { user, isAuxPlus, isManager, topRole, signOut } = useAuth();
+  const { user, isAuxPlus, isManager, topRole, signOut, displayName } = useAuth();
+
+  // Show display name if loaded, otherwise parse username from internal email
+  const username = displayName || user?.email?.replace(/@kng\.internal$/, "") || user?.email || "—";
+  const initial = username[0]?.toUpperCase() ?? "?";
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -95,8 +101,8 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={path === "/staff"} tooltip="Posters & Staff">
-                    <Link to="/staff"><Users className="h-4 w-4" /><span>Posters / Staff</span></Link>
+                  <SidebarMenuButton asChild isActive={path === "/staff"} tooltip="Staff">
+                    <Link to="/staff"><Users className="h-4 w-4" /><span>Staff</span></Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
@@ -120,14 +126,12 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8 border border-sidebar-border">
-            <AvatarFallback className="bg-secondary text-xs">
-              {user?.email?.[0]?.toUpperCase() ?? "?"}
-            </AvatarFallback>
+            <AvatarFallback className="bg-secondary text-xs">{initial}</AvatarFallback>
           </Avatar>
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0">
-                <p className="truncate text-xs font-medium">{user?.email}</p>
+                <p className="truncate text-xs font-medium">{username}</p>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   {ROLE_LABEL[topRole]}
                 </p>

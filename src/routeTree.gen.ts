@@ -17,6 +17,7 @@ import { Route as PortalRouteImport } from './routes/_portal'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalStaffRouteImport } from './routes/_portal.staff'
 import { Route as PortalSearchRouteImport } from './routes/_portal.search'
+import { Route as PortalPostersRouteImport } from './routes/_portal.posters'
 import { Route as PortalLeaderboardRouteImport } from './routes/_portal.leaderboard'
 import { Route as PortalInteractionsRouteImport } from './routes/_portal.interactions'
 import { Route as PortalHallRouteImport } from './routes/_portal.hall'
@@ -66,6 +67,11 @@ const PortalStaffRoute = PortalStaffRouteImport.update({
 const PortalSearchRoute = PortalSearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalPostersRoute = PortalPostersRouteImport.update({
+  id: '/posters',
+  path: '/posters',
   getParentRoute: () => PortalRoute,
 } as any)
 const PortalLeaderboardRoute = PortalLeaderboardRouteImport.update({
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/hall': typeof PortalHallRoute
   '/interactions': typeof PortalInteractionsRoute
   '/leaderboard': typeof PortalLeaderboardRoute
+  '/posters': typeof PortalPostersRoute
   '/search': typeof PortalSearchRoute
   '/staff': typeof PortalStaffRouteWithChildren
   '/schedule/entertainment': typeof PortalScheduleEntertainmentRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/hall': typeof PortalHallRoute
   '/interactions': typeof PortalInteractionsRoute
   '/leaderboard': typeof PortalLeaderboardRoute
+  '/posters': typeof PortalPostersRoute
   '/search': typeof PortalSearchRoute
   '/staff': typeof PortalStaffRouteWithChildren
   '/schedule/entertainment': typeof PortalScheduleEntertainmentRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/_portal/hall': typeof PortalHallRoute
   '/_portal/interactions': typeof PortalInteractionsRoute
   '/_portal/leaderboard': typeof PortalLeaderboardRoute
+  '/_portal/posters': typeof PortalPostersRoute
   '/_portal/search': typeof PortalSearchRoute
   '/_portal/staff': typeof PortalStaffRouteWithChildren
   '/_portal/schedule/entertainment': typeof PortalScheduleEntertainmentRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/hall'
     | '/interactions'
     | '/leaderboard'
+    | '/posters'
     | '/search'
     | '/staff'
     | '/schedule/entertainment'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/hall'
     | '/interactions'
     | '/leaderboard'
+    | '/posters'
     | '/search'
     | '/staff'
     | '/schedule/entertainment'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/_portal/hall'
     | '/_portal/interactions'
     | '/_portal/leaderboard'
+    | '/_portal/posters'
     | '/_portal/search'
     | '/_portal/staff'
     | '/_portal/schedule/entertainment'
@@ -316,6 +328,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof PortalSearchRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/posters': {
+      id: '/_portal/posters'
+      path: '/posters'
+      fullPath: '/posters'
+      preLoaderRoute: typeof PortalPostersRouteImport
       parentRoute: typeof PortalRoute
     }
     '/_portal/leaderboard': {
@@ -419,6 +438,7 @@ interface PortalRouteChildren {
   PortalHallRoute: typeof PortalHallRoute
   PortalInteractionsRoute: typeof PortalInteractionsRoute
   PortalLeaderboardRoute: typeof PortalLeaderboardRoute
+  PortalPostersRoute: typeof PortalPostersRoute
   PortalSearchRoute: typeof PortalSearchRoute
   PortalStaffRoute: typeof PortalStaffRouteWithChildren
   PortalScheduleEntertainmentRoute: typeof PortalScheduleEntertainmentRoute
@@ -434,6 +454,7 @@ const PortalRouteChildren: PortalRouteChildren = {
   PortalHallRoute: PortalHallRoute,
   PortalInteractionsRoute: PortalInteractionsRoute,
   PortalLeaderboardRoute: PortalLeaderboardRoute,
+  PortalPostersRoute: PortalPostersRoute,
   PortalSearchRoute: PortalSearchRoute,
   PortalStaffRoute: PortalStaffRouteWithChildren,
   PortalScheduleEntertainmentRoute: PortalScheduleEntertainmentRoute,
