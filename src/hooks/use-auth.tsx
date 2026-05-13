@@ -37,17 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (data?.display_name) setDisplayName(data.display_name);
   }, []);
 
-  async function checkDeactivated(uid: string): Promise<boolean> {
-    const { data } = await supabase.from("profiles").select("deactivated, display_name").eq("id", uid).single();
-    if (data?.display_name) setDisplayName(data.display_name);
-    if (data?.deactivated) {
-      await supabase.auth.signOut();
-      toast.error("Your account has been deactivated. Contact a manager.");
-      return true;
-    }
-    return false;
-  }
-
   function subscribeToDeactivation(uid: string) {
     if (realtimeChannelRef.current) {
       supabase.removeChannel(realtimeChannelRef.current);
@@ -58,10 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${uid}` },
-        async (payload) => {
+        (payload) => {
           const p = payload.new as any;
           if (p?.deactivated === true) {
-            await supabase.auth.signOut();
+            // Fire and forget — never await inside a realtime callback
+            supabase.auth.signOut();
             toast.error("Your account has been deactivated. Contact a manager.");
           }
           if (p?.display_name) setDisplayName(p.display_name);
@@ -71,14 +61,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     realtimeChannelRef.current = ch;
   }
 
-  async function onSignedIn(u: User, s: Session) {
+  // Hydrate profile + roles WITHOUT awaiting inside onAuthStateChange.
+  // Awaiting Supabase calls inside the auth callback deadlocks the client and
+  // causes the sign-in spinner to hang forever.
+  function hydrateUser(uid: string) {
+    supabase
+      .from("profiles")
+      .select("deactivated, display_name")
+      .eq("id", uid)
+      .single()
+      .then(({ data }) => {
+        const d = data as any;
+        if (d?.display_name) setDisplayName(d.display_name);
+        if (d?.deactivated) {
+          supabase.auth.signOut();
+          toast.error("Your account has been deactivated. Contact a manager.");
+          return;
+        }
+        loadRoles(uid);
+        subscribeToDeactivation(uid);
+      });
+  }
+
+  function onSignedIn(u: User, s: Session) {
     setSession(s);
     setUser(u);
-    const deactivated = await checkDeactivated(u.id);
-    if (!deactivated) {
-      await loadRoles(u.id);
-      subscribeToDeactivation(u.id);
-    }
+    // Defer DB calls to next tick — must NOT await inside auth callback
+    setTimeout(() => hydrateUser(u.id), 0);
   }
 
   function onSignedOut() {
@@ -93,26 +102,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Bootstrap from existing session — runs once
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
-      if (s?.user) {
-        await onSignedIn(s.user, s);
-      }
-      setLoading(false);
-    });
-
-    // Listen only for *changes* after initial load
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
-      // INITIAL_SESSION is handled by getSession above — skip to avoid double calls
-      if (event === "INITIAL_SESSION") return;
-
+    // Set up listener FIRST so we never miss an event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       if (event === "SIGNED_OUT" || !s?.user) {
         onSignedOut();
         return;
       }
-      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") && s?.user) {
-        await onSignedIn(s.user, s);
+      if (s?.user) {
+        onSignedIn(s.user, s);
       }
+    });
+
+    // Then bootstrap any existing session
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (s?.user) {
+        onSignedIn(s.user, s);
+      }
+      setLoading(false);
     });
 
     return () => {
