@@ -64,30 +64,6 @@ export type Database = {
         }
         Relationships: []
       }
-      hall_of_fame_frames: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          image_url: string
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          image_url: string
-          name: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          image_url?: string
-          name?: string
-        }
-        Relationships: []
-      }
       hall_of_fame: {
         Row: {
           author_id: string
@@ -193,11 +169,8 @@ export type Database = {
           author_id: string
           created_at: string
           department: Database["public"]["Enums"]["department"]
-          f3_message: string | null
           id: string
           location: string | null
-          poster_image_url: string | null
-          poster_message: string | null
           slot_id: string | null
           summary: string | null
           title: string
@@ -207,11 +180,8 @@ export type Database = {
           author_id: string
           created_at?: string
           department: Database["public"]["Enums"]["department"]
-          f3_message?: string | null
           id?: string
           location?: string | null
-          poster_image_url?: string | null
-          poster_message?: string | null
           slot_id?: string | null
           summary?: string | null
           title: string
@@ -221,11 +191,8 @@ export type Database = {
           author_id?: string
           created_at?: string
           department?: Database["public"]["Enums"]["department"]
-          f3_message?: string | null
           id?: string
           location?: string | null
-          poster_image_url?: string | null
-          poster_message?: string | null
           slot_id?: string | null
           summary?: string | null
           title?: string
@@ -304,42 +271,35 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
-          deactivated: boolean
           department: Database["public"]["Enums"]["department"] | null
           display_name: string
           id: string
           status: string
           updated_at: string
-          username: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
-          deactivated?: boolean
           department?: Database["public"]["Enums"]["department"] | null
           display_name: string
           id: string
           status?: string
           updated_at?: string
-          username?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
-          deactivated?: boolean
           department?: Database["public"]["Enums"]["department"] | null
           display_name?: string
           id?: string
           status?: string
           updated_at?: string
-          username?: string | null
         }
         Relationships: []
       }
       schedule_slots: {
         Row: {
           booked_by: string
-          claimed_by: string | null
           created_at: string
           department: Database["public"]["Enums"]["department"]
           id: string
@@ -353,7 +313,6 @@ export type Database = {
         }
         Insert: {
           booked_by: string
-          claimed_by?: string | null
           created_at?: string
           department: Database["public"]["Enums"]["department"]
           id?: string
@@ -367,7 +326,6 @@ export type Database = {
         }
         Update: {
           booked_by?: string
-          claimed_by?: string | null
           created_at?: string
           department?: Database["public"]["Enums"]["department"]
           id?: string
