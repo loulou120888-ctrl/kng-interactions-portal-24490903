@@ -301,6 +301,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          deactivated: boolean
           department: Database["public"]["Enums"]["department"] | null
           display_name: string
           id: string
@@ -310,6 +311,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          deactivated?: boolean
           department?: Database["public"]["Enums"]["department"] | null
           display_name: string
           id: string
@@ -319,6 +321,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          deactivated?: boolean
           department?: Database["public"]["Enums"]["department"] | null
           display_name?: string
           id?: string
