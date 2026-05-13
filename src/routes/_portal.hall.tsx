@@ -55,6 +55,9 @@ function HallOfFame() {
       name: f.name,
       imageUrl: f.image_url,
       customDbId: f.id,
+      region: (f.region_w && f.region_h)
+        ? { x: Number(f.region_x), y: Number(f.region_y), w: Number(f.region_w), h: Number(f.region_h) }
+        : null,
     })));
   }
 
