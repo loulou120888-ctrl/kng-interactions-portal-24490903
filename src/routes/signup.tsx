@@ -26,7 +26,7 @@ const schema = z.object({
 });
 
 function internalEmail(username: string): string {
-  return `${username.toLowerCase()}@kngportal.com`;
+  return `${username.toLowerCase()}@kng.internal`;
 }
 
 function authErrorMessage(msg: string): string {
