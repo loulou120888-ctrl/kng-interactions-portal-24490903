@@ -1,6 +1,6 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,28 +9,27 @@ import { toast } from "sonner";
 import { Copy, Check } from "lucide-react";
 import { DEPT_LABEL, type Department } from "@/lib/portal";
 
-export const Route = createFileRoute("/_portal/comp")({  component: CompQueue,
-});
+export const Route = createFileRoute("/_portal/comp")({ component: CompQueue });
 
 function CompQueue() {
   const { user, isAuxPlus } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
-  const [interactions, setInteractions] = useState<Record<string, any>>({});
+  const [interactionMap, setInteractionMap] = useState<Record<string, any>>({});
 
   async function load() {
-    const { data } = await supabase.from("interaction_winners").select("*").eq("comped", false).order("created_at", { ascending: true });
-    setRows(data ?? []);
-    const ids = Array.from(new Set((data ?? []).map((w: any) => w.interaction_id)));
+    const data = await api.winners.pending().catch(() => [] as any[]);
+    setRows(data);
+    const ids = Array.from(new Set(data.map((w: any) => w.interaction_id)));
     if (ids.length) {
-      const { data: ix } = await supabase.from("interactions").select("id, title, department").in("id", ids);
-      setInteractions(Object.fromEntries((ix ?? []).map((x: any) => [x.id, x])));
+      const ix = await api.interactions.list({ limit: 1000 }).catch(() => [] as any[]);
+      setInteractionMap(Object.fromEntries((ix as any[]).filter((x: any) => ids.includes(x.id)).map((x: any) => [x.id, x])));
     }
   }
 
   useEffect(() => {
     load();
-    const ch = supabase.channel("comp").on("postgres_changes", { event: "*", schema: "public", table: "interaction_winners" }, () => load()).subscribe();
-    return () => { supabase.removeChannel(ch); };
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   if (!isAuxPlus) return <p className="text-sm text-muted-foreground">AUX+ only.</p>;
@@ -42,11 +41,8 @@ function CompQueue() {
   }
 
   async function markDone(w: any) {
-    const { error } = await supabase.from("interaction_winners").update({
-      comped: true, comped_by: user?.id, comped_at: new Date().toISOString(),
-    }).eq("id", w.id);
-    if (error) toast.error(error.message);
-    else { toast.success("Marked comped"); load(); }
+    await api.winners.comp(w.id).catch((e: any) => { toast.error(e.message); return null; });
+    toast.success("Marked comped"); load();
   }
 
   return (
@@ -59,7 +55,7 @@ function CompQueue() {
         <div className="divide-y divide-border">
           {rows.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">All clear — nothing to comp.</p>}
           {rows.map((w) => {
-            const ix = interactions[w.interaction_id];
+            const ix = interactionMap[w.interaction_id];
             return (
               <div key={w.id} className="flex items-center gap-3 py-3 px-2">
                 <div className="flex-1 min-w-0">

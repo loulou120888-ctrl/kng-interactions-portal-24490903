@@ -1,14 +1,13 @@
 import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { ROLE_LABEL, DEPT_LABEL, ROLE_RANK, type Role, type Department } from "@/lib/portal";
 
-export const Route = createFileRoute("/_portal/staff/$id")({  component: StaffProfile,
-});
+export const Route = createFileRoute("/_portal/staff/$id")({ component: StaffProfile });
 
 function StaffProfile() {
   const { id } = useParams({ from: "/_portal/staff/$id" });
@@ -19,16 +18,16 @@ function StaffProfile() {
 
   useEffect(() => {
     (async () => {
-      const [{ data: p }, { data: r }, { data: pts }, { data: ix }] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", id),
-        supabase.from("points_log").select("amount").eq("user_id", id),
-        supabase.from("interactions").select("*").eq("author_id", id).order("created_at", { ascending: false }).limit(20),
+      const [p, r, pts, ix] = await Promise.all([
+        api.profiles.get(id).catch(() => null),
+        api.roles.forUser(id).catch(() => []),
+        api.points.list({ user_id: id }).catch(() => []),
+        api.interactions.list({ author_id: id, limit: 20 }).catch(() => []),
       ]);
       setProfile(p);
-      setRoles((r ?? []).map((x: any) => x.role) as Role[]);
-      setPoints((pts ?? []).reduce((a, b) => a + (b.amount ?? 0), 0));
-      setRecent(ix ?? []);
+      setRoles((r as any[]).map((x: any) => x.role) as Role[]);
+      setPoints((pts as any[]).reduce((a, b) => a + (b.amount ?? 0), 0));
+      setRecent(ix as any[]);
     })();
   }, [id]);
 

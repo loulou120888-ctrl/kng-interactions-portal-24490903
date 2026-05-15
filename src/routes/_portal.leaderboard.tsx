@@ -1,11 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-<<<<<<< HEAD
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
-=======
-import { supabase } from "@/integrations/supabase/client";
->>>>>>> parent of 6f239c7 (Replace Supabase integration with custom API for improved performance and maintainability)
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,7 +30,7 @@ const PERIOD_LABELS: Record<Period, string> = {
 function Leaderboard() {
   const { isManager } = useAuth();
   const [pts, setPts] = useState<{ user_id: string; amount: number; awarded_at: string }[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, string>>({});
+  const [profileMap, setProfileMap] = useState<Record<string, string>>({});
   const [slots, setSlots] = useState<{ status: string; slot_start: string }[]>([]);
   const [attendanceToday, setAttendanceToday] = useState<Record<string, number>>({});
   const [period, setPeriod] = useState<Period>("weekly");
@@ -66,7 +62,6 @@ function Leaderboard() {
   }
 
   useEffect(() => {
-<<<<<<< HEAD
     load();
     const interval = setInterval(async () => {
       const since35 = new Date(Date.now() - 35 * 86400_000).toISOString();
@@ -80,43 +75,6 @@ function Leaderboard() {
       setAttendanceToday(todayMap);
     }, 30000);
     return () => clearInterval(interval);
-=======
-    (async () => {
-      const since35 = new Date(Date.now() - 35 * 86400_000).toISOString();
-
-      const [{ data: ptsData }, { data: pf }, { data: slotsData }, { data: todayPts }] = await Promise.all([
-        supabase.from("points_log").select("user_id, amount, awarded_at").gte("awarded_at", since35),
-        supabase.from("profiles").select("id, display_name"),
-        supabase.from("schedule_slots").select("status, slot_start").gte("slot_start", new Date(Date.now() - 7 * 86400_000).toISOString()).lte("slot_start", new Date().toISOString()),
-        supabase.from("points_log").select("user_id, amount").gte("awarded_at", todayStart),
-      ]);
-
-      setPts((ptsData ?? []) as any);
-      setProfiles(Object.fromEntries((pf ?? []).map((x: any) => [x.id, x.display_name])));
-      setSlots((slotsData ?? []) as any);
-
-      const todayMap: Record<string, number> = {};
-      (todayPts ?? []).forEach((p: any) => {
-        todayMap[p.user_id] = (todayMap[p.user_id] ?? 0) + (p.amount ?? 0);
-      });
-      setAttendanceToday(todayMap);
-    })();
-
-    const ch = supabase.channel("points-lb")
-      .on("postgres_changes", { event: "*", schema: "public", table: "points_log" }, async () => {
-        const since35 = new Date(Date.now() - 35 * 86400_000).toISOString();
-        const [{ data: p }, { data: td }] = await Promise.all([
-          supabase.from("points_log").select("user_id, amount, awarded_at").gte("awarded_at", since35),
-          supabase.from("points_log").select("user_id, amount").gte("awarded_at", todayStart),
-        ]);
-        setPts((p ?? []) as any);
-        const todayMap: Record<string, number> = {};
-        (td ?? []).forEach((x: any) => { todayMap[x.user_id] = (todayMap[x.user_id] ?? 0) + (x.amount ?? 0); });
-        setAttendanceToday(todayMap);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
->>>>>>> parent of 6f239c7 (Replace Supabase integration with custom API for improved performance and maintainability)
   }, [todayStart]);
 
   async function confirmReset() {
@@ -147,36 +105,25 @@ function Leaderboard() {
   const weekly = useMemo(() => aggregate(7 * 86400_000), [pts]);
   const monthly = useMemo(() => aggregate(30 * 86400_000), [pts]);
 
-<<<<<<< HEAD
   const leaderboard = period === "daily" ? daily : period === "weekly" ? weekly : monthly;
 
   const missedSlots = useMemo(() => slots.filter(s => s.status !== "completed").length, [slots]);
-=======
-  const missedSlots = useMemo(() => {
-    return slots.filter(s => s.status !== "completed").length;
-  }, [slots]);
-
->>>>>>> parent of 6f239c7 (Replace Supabase integration with custom API for improved performance and maintainability)
   const totalSlots = slots.length;
   const completedSlots = slots.filter(s => s.status === "completed").length;
   const completionPct = totalSlots > 0 ? Math.round((completedSlots / totalSlots) * 100) : 0;
 
   const dailyMinMembers = useMemo(() => {
-    const allIds = new Set([
-      ...Object.keys(attendanceToday),
-      ...Object.keys(profiles),
-    ]);
+    const allIds = new Set([...Object.keys(attendanceToday), ...Object.keys(profileMap)]);
     return Array.from(allIds)
-      .filter(id => profiles[id])
-      .map(id => ({ id, name: profiles[id], pts: attendanceToday[id] ?? 0, hit: (attendanceToday[id] ?? 0) >= DAILY_MIN }))
+      .filter(id => profileMap[id])
+      .map(id => ({ id, name: profileMap[id], pts: attendanceToday[id] ?? 0, hit: (attendanceToday[id] ?? 0) >= DAILY_MIN }))
       .sort((a, b) => b.pts - a.pts);
-  }, [attendanceToday, profiles]);
+  }, [attendanceToday, profileMap]);
 
   const hitMin = dailyMinMembers.filter(m => m.hit).length;
 
   return (
     <div className="space-y-6">
-<<<<<<< HEAD
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2"><Trophy className="h-6 w-6" /> Staff Dashboard</h1>
@@ -189,51 +136,25 @@ function Leaderboard() {
         )}
       </div>
 
-=======
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-          <Trophy className="h-6 w-6" /> Staff Dashboard
-        </h1>
-        <p className="text-sm text-muted-foreground">Live performance across the team.</p>
-      </div>
-
-      {/* Stat cards */}
->>>>>>> parent of 6f239c7 (Replace Supabase integration with custom API for improved performance and maintainability)
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="rounded-2xl bg-card/60 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Events this week</p>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </div>
+          <div className="flex items-center justify-between mb-3"><p className="text-xs uppercase tracking-wider text-muted-foreground">Events this week</p><Calendar className="h-4 w-4 text-muted-foreground" /></div>
           <p className="text-3xl font-semibold">{completedSlots}</p>
           <p className="text-xs text-muted-foreground mt-1">{completionPct}% completion rate</p>
-          <div className="mt-3 h-1.5 rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${completionPct}%` }} />
-          </div>
+          <div className="mt-3 h-1.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${completionPct}%` }} /></div>
         </Card>
-
         <Card className="rounded-2xl bg-card/60 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Missed slots (7d)</p>
-            <XCircle className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <p className={`text-3xl font-semibold ${missedSlots > 0 ? "text-destructive" : "text-green-400"}`}>
-            {missedSlots}
-          </p>
+          <div className="flex items-center justify-between mb-3"><p className="text-xs uppercase tracking-wider text-muted-foreground">Missed slots (7d)</p><XCircle className="h-4 w-4 text-muted-foreground" /></div>
+          <p className={`text-3xl font-semibold ${missedSlots > 0 ? "text-destructive" : "text-green-400"}`}>{missedSlots}</p>
           <p className="text-xs text-muted-foreground mt-1">slots not completed</p>
         </Card>
-
         <Card className="rounded-2xl bg-card/60 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Hit daily min today</p>
-            <Star className="h-4 w-4 text-muted-foreground" />
-          </div>
+          <div className="flex items-center justify-between mb-3"><p className="text-xs uppercase tracking-wider text-muted-foreground">Hit daily min today</p><Star className="h-4 w-4 text-muted-foreground" /></div>
           <p className="text-3xl font-semibold">{hitMin}</p>
           <p className="text-xs text-muted-foreground mt-1">of {dailyMinMembers.length} staff · min {DAILY_MIN} pts</p>
         </Card>
       </div>
 
-<<<<<<< HEAD
       <Card className="rounded-2xl bg-card/60 p-5">
         <div className="flex items-center gap-3 mb-5 flex-wrap">
           <Trophy className="h-4 w-4 text-[oklch(0.78_0.16_75)]" />
@@ -264,68 +185,15 @@ function Leaderboard() {
         </div>
       </Card>
 
-=======
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Weekly top 10 */}
-        <Card className="rounded-2xl bg-card/60 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy className="h-4 w-4 text-[oklch(0.78_0.16_75)]" />
-            <h2 className="text-sm font-semibold tracking-wide">Top members — this week</h2>
-          </div>
-          <div className="divide-y divide-border">
-            {weekly.length === 0 && <p className="py-4 text-sm text-muted-foreground text-center">No points yet this week.</p>}
-            {weekly.slice(0, 10).map(([uid, n], i) => (
-              <div key={uid} className="flex items-center gap-3 py-2.5">
-                <span className={`grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[11px] font-bold ${medalClass(i)}`}>{i + 1}</span>
-                <span className="flex-1 text-sm truncate">{profiles[uid] ?? "—"}</span>
-                <span className="text-sm font-mono tabular-nums">{n} <span className="text-muted-foreground text-xs">pts</span></span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Monthly top 10 */}
-        <Card className="rounded-2xl bg-card/60 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy className="h-4 w-4 text-[oklch(0.7_0.02_260)]" />
-            <h2 className="text-sm font-semibold tracking-wide">Top members — this month</h2>
-          </div>
-          <div className="divide-y divide-border">
-            {monthly.length === 0 && <p className="py-4 text-sm text-muted-foreground text-center">No points yet this month.</p>}
-            {monthly.slice(0, 10).map(([uid, n], i) => (
-              <div key={uid} className="flex items-center gap-3 py-2.5">
-                <span className={`grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[11px] font-bold ${medalClass(i)}`}>{i + 1}</span>
-                <span className="flex-1 text-sm truncate">{profiles[uid] ?? "—"}</span>
-                <span className="text-sm font-mono tabular-nums">{n} <span className="text-muted-foreground text-xs">pts</span></span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Daily minimum tracker */}
->>>>>>> parent of 6f239c7 (Replace Supabase integration with custom API for improved performance and maintainability)
       <Card className="rounded-2xl bg-card/60 p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold tracking-wide">Daily minimum tracker — today</h2>
-          <Badge variant="outline" className="ml-auto text-[10px]">Min {DAILY_MIN} pts</Badge>
-        </div>
+        <div className="flex items-center gap-2 mb-4"><Users className="h-4 w-4 text-muted-foreground" /><h2 className="text-sm font-semibold tracking-wide">Daily minimum tracker — today</h2><Badge variant="outline" className="ml-auto text-[10px]">Min {DAILY_MIN} pts</Badge></div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {dailyMinMembers.length === 0 && (
-            <p className="col-span-full py-4 text-sm text-muted-foreground text-center">No activity logged yet today.</p>
-          )}
+          {dailyMinMembers.length === 0 && <p className="col-span-full py-4 text-sm text-muted-foreground text-center">No activity logged yet today.</p>}
           {dailyMinMembers.map((m) => (
-            <div key={m.id} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
-              m.hit ? "border-green-500/30 bg-green-500/5" : "border-border bg-background/30"
-            }`}>
-              {m.hit
-                ? <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-green-400" />
-                : <XCircle className="h-4 w-4 flex-shrink-0 text-muted-foreground/50" />}
+            <div key={m.id} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition ${m.hit ? "border-green-500/30 bg-green-500/5" : "border-border bg-background/30"}`}>
+              {m.hit ? <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-green-400" /> : <XCircle className="h-4 w-4 flex-shrink-0 text-muted-foreground/50" />}
               <span className="flex-1 text-sm truncate">{m.name}</span>
-              <span className={`text-xs font-mono tabular-nums ${m.hit ? "text-green-400" : "text-muted-foreground"}`}>
-                {m.pts}/{DAILY_MIN}
-              </span>
+              <span className={`text-xs font-mono tabular-nums ${m.hit ? "text-green-400" : "text-muted-foreground"}`}>{m.pts}/{DAILY_MIN}</span>
             </div>
           ))}
         </div>
