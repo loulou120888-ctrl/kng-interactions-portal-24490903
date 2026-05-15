@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db.js";
 import { interactions, interactionAttendees, interactionWinners, pointsLog, scheduleSlots } from "../../shared/schema.js";
-import { eq, desc, or, ilike, and, isNotNull, isNull, inArray } from "drizzle-orm";
+import { eq, desc, or, ilike, and, isNotNull, inArray } from "drizzle-orm";
 import { requireAuth } from "../middleware.js";
 
 export const interactionsRouter = Router();
@@ -10,10 +10,9 @@ interactionsRouter.get("/", requireAuth, async (req, res) => {
   try {
     const { q, poster_only, limit: lim = "200", author_id } = req.query as any;
     let query = db.select().from(interactions).$dynamic();
-    const conditions: any[] = [];
 
     if (q) {
-      conditions.push(or(
+      query = query.where(or(
         ilike(interactions.title, `%${q}%`),
         ilike(interactions.summary, `%${q}%`),
         ilike(interactions.poster_message, `%${q}%`),
@@ -21,21 +20,18 @@ interactionsRouter.get("/", requireAuth, async (req, res) => {
       ));
     }
 
-    if (author_id) conditions.push(eq(interactions.author_id, author_id));
-
-    if (poster_only === "true") {
-      conditions.push(isNull(interactions.slot_id));
-      conditions.push(or(
-        isNotNull(interactions.poster_message),
-        isNotNull(interactions.poster_image_url),
-        isNotNull(interactions.f3_message),
-      ));
+    if (author_id) {
+      query = query.where(eq(interactions.author_id, author_id));
     }
 
-    if (conditions.length === 1) query = query.where(conditions[0]);
-    else if (conditions.length > 1) query = query.where(and(...conditions));
-
     const rows = await query.orderBy(desc(interactions.created_at)).limit(parseInt(lim));
+
+    if (poster_only === "true") {
+      const filtered = rows.filter(r => r.poster_message || r.poster_image_url || r.f3_message);
+      res.json(filtered);
+      return;
+    }
+
     res.json(rows);
   } catch (err) {
     console.error(err);

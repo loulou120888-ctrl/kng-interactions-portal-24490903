@@ -38,7 +38,6 @@ function StaffPage() {
   }
   useEffect(() => { load(); }, []);
 
-  const actorRank = ROLE_RANK[topRole];
   const visible = showDeactivated ? staff : staff.filter(s => !s.deactivated);
 
   return (
@@ -57,7 +56,6 @@ function StaffPage() {
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {visible.map((s) => {
           const top = s.roles.slice().sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0];
-          const canEdit = isAuxPlus && s.id !== user?.id && actorRank > ROLE_RANK[top];
           return (
             <Card key={s.id} className={`rounded-2xl bg-card/60 p-4 ${s.deactivated ? "opacity-50" : ""}`}>
               <div className="flex items-start justify-between">
@@ -72,7 +70,7 @@ function StaffPage() {
                     {s.deactivated && <Badge variant="destructive">Deactivated</Badge>}
                   </div>
                 </div>
-                {canEdit && (
+                {isAuxPlus && s.id !== user?.id && (
                   <Button size="icon" variant="ghost" onClick={() => setEdit(s)}><Pencil className="h-4 w-4" /></Button>
                 )}
               </div>
@@ -97,8 +95,7 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
   const top = staff.roles.slice().sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0];
   const [role, setRole] = useState<Role>(top);
   const [busy, setBusy] = useState(false);
-  const actorRank = ROLE_RANK[actorTopRole];
-  const allowedRoles = ALL_ROLES.filter(r => ROLE_RANK[r] < actorRank);
+  const allowedRoles = ALL_ROLES.filter(r => canManager || r !== "manager");
 
   async function save() {
     setBusy(true);
