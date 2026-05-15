@@ -14,6 +14,7 @@ import {
   LogOut,
   Crown,
   FileImage,
+  Settings2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,7 +38,6 @@ const mainItems = [
   { title: "Events & Parties", url: "/schedule/events", icon: Calendar },
   { title: "Entertainment", url: "/schedule/entertainment", icon: Music },
   { title: "Interactions", url: "/interactions", icon: ClipboardList },
-  { title: "Posters & Promos", url: "/posters", icon: FileImage },
   { title: "Leaderboard", url: "/leaderboard", icon: Trophy },
   { title: "Announcements", url: "/announcements", icon: Megaphone },
   { title: "Hall of Fame", url: "/hall", icon: ImageIcon },
@@ -49,7 +49,6 @@ export function AppSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const { user, isAuxPlus, isManager, topRole, signOut, displayName } = useAuth();
 
-  // Show display name if loaded, otherwise parse username from internal email
   const username = displayName || user?.email?.replace(/@kngportal\.com$/, "") || user?.email || "—";
   const initial = username[0]?.toUpperCase() ?? "?";
 
@@ -78,7 +77,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild isActive={path === item.url} tooltip={item.title}>
+                  <SidebarMenuButton asChild isActive={path === item.url || path.startsWith(item.url + "/")} tooltip={item.title}>
                     <Link to={item.url}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
@@ -86,6 +85,26 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Staff</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={path === "/staff" || path.startsWith("/staff/")} tooltip="Staff">
+                  <Link to="/staff"><Users className="h-4 w-4" /><span>Staff</span></Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {isAuxPlus && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={path === "/posters"} tooltip="Posters & Promos">
+                    <Link to="/posters"><FileImage className="h-4 w-4" /><span>Posters & Promos</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -101,22 +120,30 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={path === "/staff"} tooltip="Staff">
-                    <Link to="/staff"><Users className="h-4 w-4" /><span>Staff</span></Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={path === "/admin"} tooltip="Admin">
+                  <SidebarMenuButton asChild isActive={path === "/admin"} tooltip="Codes & Prizes">
                     <Link to="/admin"><Shield className="h-4 w-4" /><span>Codes & Prizes</span></Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                {isManager && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={path === "/archives"} tooltip="Archives">
-                      <Link to="/archives"><Archive className="h-4 w-4" /><span>Archives</span></Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {isManager && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Management</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={path === "/archives"} tooltip="Archives">
+                    <Link to="/archives"><Archive className="h-4 w-4" /><span>Archives</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={path === "/leaderboard"} tooltip="Leaderboard & Reset">
+                    <Link to="/leaderboard"><Settings2 className="h-4 w-4" /><span>Leaderboard & Reset</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
