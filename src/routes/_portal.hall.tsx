@@ -264,34 +264,47 @@ function HallOfFame() {
             {allFrames.length === 0 && (
               <p className="text-xs text-muted-foreground">All frames removed. Upload a custom one to continue.</p>
             )}
-            <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
-              {allFrames.map((f) => (
-                <div key={f.id} className="relative group">
-                  <button onClick={() => setFrame(f)}
-                    className={`w-full rounded-lg border-2 p-1 transition ${frame.id === f.id ? "border-primary" : "border-border"}`}>
-                    {f.imageUrl ? (
-                      <div className="aspect-square rounded overflow-hidden relative">
-                        <img src={f.imageUrl} alt={f.name} className="w-full h-full object-cover" />
-                        <span className="absolute bottom-0 left-0 right-0 text-center text-[9px] bg-background/70 py-0.5 truncate px-1">{f.name}</span>
-                      </div>
-                    ) : (
-                      <div className="aspect-square rounded grid place-items-center text-[10px]"
-                        style={{ background: "rgba(255,255,255,0.04)", borderColor: f.color, borderWidth: 4, borderStyle: "solid" }}>
-                        {f.name}
-                      </div>
-                    )}
-                  </button>
-                  {isManager && (
+            <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto pr-1">
+              {allFrames.map((f) => {
+                const selected = frame.id === f.id;
+                return (
+                  <div key={f.id} className="relative group flex-shrink-0">
                     <button
-                      onClick={() => f.customDbId ? deleteCustomFrame(f) : deleteBuiltinFrame(f.id)}
-                      className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground p-0.5 opacity-0 group-hover:opacity-100 transition"
-                      title="Remove frame"
+                      onClick={() => setFrame(f)}
+                      className={`w-full flex items-center gap-3 rounded-xl border-2 px-3 py-2 transition text-left ${
+                        selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/40 bg-background/30"
+                      }`}
                     >
-                      <Trash2 className="h-2.5 w-2.5" />
+                      {f.imageUrl ? (
+                        <div className="h-10 w-10 flex-shrink-0 rounded-lg overflow-hidden border border-border">
+                          <img src={f.imageUrl} alt={f.name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div
+                          className="h-10 w-10 flex-shrink-0 rounded-lg"
+                          style={{
+                            background: "rgba(255,255,255,0.04)",
+                            borderWidth: 5,
+                            borderStyle: "solid",
+                            borderColor: f.color,
+                          }}
+                        />
+                      )}
+                      <span className={`text-sm font-medium ${selected ? "text-primary" : "text-foreground"}`}>{f.name}</span>
+                      {selected && <span className="ml-auto text-[10px] text-primary font-semibold">Selected</span>}
                     </button>
-                  )}
-                </div>
-              ))}
+                    {isManager && (
+                      <button
+                        onClick={() => f.customDbId ? deleteCustomFrame(f) : deleteBuiltinFrame(f.id)}
+                        className="absolute top-1/2 -translate-y-1/2 right-2 rounded-full bg-destructive text-destructive-foreground p-1 opacity-0 group-hover:opacity-100 transition z-10"
+                        title="Remove frame"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

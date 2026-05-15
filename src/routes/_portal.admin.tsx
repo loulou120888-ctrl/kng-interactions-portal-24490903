@@ -11,13 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Copy, Trash2 } from "lucide-react";
-import { ALL_ROLES, ROLE_LABEL, DEPARTMENTS, DEPT_LABEL, type Role, type Department } from "@/lib/portal";
+import { ALL_ROLES, ROLE_LABEL, ROLE_RANK, DEPARTMENTS, DEPT_LABEL, type Role, type Department } from "@/lib/portal";
 
-export const Route = createFileRoute("/_portal/admin")({  component: Admin,
-});
+export const Route = createFileRoute("/_portal/admin")({ component: Admin });
 
 function Admin() {
-  const { user, isAuxPlus, isManager } = useAuth();
+  const { user, isAuxPlus, isManager, topRole } = useAuth();
   if (!isAuxPlus) return <p className="text-sm text-muted-foreground">AUX+ only.</p>;
 
   return (
@@ -31,14 +30,18 @@ function Admin() {
           <TabsTrigger value="codes">Signup Codes</TabsTrigger>
           <TabsTrigger value="prizes">Prizes</TabsTrigger>
         </TabsList>
-        <TabsContent value="codes"><Codes canManager={isManager} userId={user!.id} /></TabsContent>
+        <TabsContent value="codes">
+          <Codes canManager={isManager} userId={user!.id} actorTopRole={topRole} />
+        </TabsContent>
         <TabsContent value="prizes"><Prizes /></TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function Codes({ canManager, userId }: { canManager: boolean; userId: string }) {
+function Codes({ canManager, userId, actorTopRole }: {
+  canManager: boolean; userId: string; actorTopRole: Role;
+}) {
   const [codes, setCodes] = useState<any[]>([]);
   const [role, setRole] = useState<Role>("member");
   const [dept, setDept] = useState<Department | "">("");
@@ -67,30 +70,41 @@ function Codes({ canManager, userId }: { canManager: boolean; userId: string }) 
     if (error) toast.error(error.message); else load();
   }
 
-  const allowedRoles = ALL_ROLES.filter(r => canManager || r !== "manager");
+  // Can only generate codes for roles strictly below your own rank
+  const actorRank = ROLE_RANK[actorTopRole];
+  const allowedRoles = ALL_ROLES.filter(r => ROLE_RANK[r] < actorRank);
+
+  // If current role selection is no longer allowed, reset to first allowed
+  const safeRole = allowedRoles.includes(role) ? role : (allowedRoles[0] ?? "member");
 
   return (
     <Card className="rounded-2xl bg-card/60 p-5 space-y-4">
-      <div className="grid sm:grid-cols-3 gap-3 items-end">
-        <div className="space-y-2">
-          <Label>Role</Label>
-          <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{allowedRoles.map(r => <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>)}</SelectContent>
-          </Select>
+      {allowedRoles.length === 0 ? (
+        <p className="text-sm text-muted-foreground">You do not have permission to generate codes.</p>
+      ) : (
+        <div className="grid sm:grid-cols-3 gap-3 items-end">
+          <div className="space-y-2">
+            <Label>Role</Label>
+            <Select value={safeRole} onValueChange={(v) => setRole(v as Role)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {allowedRoles.map(r => <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Department</Label>
+            <Select value={dept || "none"} onValueChange={(v) => setDept(v === "none" ? "" : v as Department)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{DEPT_LABEL[d]}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={generate}><Plus className="h-4 w-4 mr-1" /> Generate</Button>
         </div>
-        <div className="space-y-2">
-          <Label>Department</Label>
-          <Select value={dept || "none"} onValueChange={(v) => setDept(v === "none" ? "" : v as Department)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{DEPT_LABEL[d]}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <Button onClick={generate}><Plus className="h-4 w-4 mr-1" /> Generate</Button>
-      </div>
+      )}
       <div className="divide-y divide-border">
         {codes.map((c) => (
           <div key={c.id} className="flex items-center gap-3 py-3">
@@ -99,13 +113,18 @@ function Codes({ canManager, userId }: { canManager: boolean; userId: string }) 
             {c.department && <Badge variant="outline">{DEPT_LABEL[c.department as Department]}</Badge>}
             {c.used_by ? <Badge>Used</Badge> : c.revoked ? <Badge variant="destructive">Revoked</Badge> : <Badge variant="outline">Available</Badge>}
             <div className="ml-auto flex gap-1">
-              <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(c.code); toast.success("Copied"); }}><Copy className="h-3 w-3" /></Button>
-              {!c.used_by && !c.revoked && (
-                <Button variant="ghost" size="icon" onClick={() => revoke(c.id)}><Trash2 className="h-3 w-3" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(c.code); toast.success("Copied"); }}>
+                <Copy className="h-3 w-3" />
+              </Button>
+              {!c.used_by && !c.revoked && canManager && (
+                <Button variant="ghost" size="icon" onClick={() => revoke(c.id)}>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
               )}
             </div>
           </div>
         ))}
+        {codes.length === 0 && <p className="py-4 text-sm text-muted-foreground">No codes yet.</p>}
       </div>
     </Card>
   );

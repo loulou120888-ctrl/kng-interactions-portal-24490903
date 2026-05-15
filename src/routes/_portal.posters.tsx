@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DEPT_LABEL, DEPT_BG, DEPARTMENTS, type Department } from "@/lib/portal";
-import { Copy, Check, ImageIcon, FileText, Radio, Plus, Upload, X, Trash2, ChevronDown, ChevronRight, Search } from "lucide-react";
+import { Copy, Check, ImageIcon, FileText, Radio, Plus, Upload, X, Trash2, ChevronDown, ChevronRight, Search, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_portal/posters")({ component: PostersPage });
@@ -51,7 +51,9 @@ function CopyChip({ label, icon: Icon, text, copyKey }: {
   );
 }
 
-function PosterCard({ r, authorName, canDelete, onDelete }: { r: any; authorName: string; canDelete: boolean; onDelete: () => void }) {
+function PosterCard({ r, authorName, canDelete, onDelete, onEdit }: {
+  r: any; authorName: string; canDelete: boolean; onDelete: () => void; onEdit: () => void;
+}) {
   const { copiedKey, copy } = useCopy();
   const imgCopied = copiedKey === `img-${r.id}`;
   const [expanded, setExpanded] = useState(false);
@@ -76,17 +78,27 @@ function PosterCard({ r, authorName, canDelete, onDelete }: { r: any; authorName
             {DEPT_LABEL[r.department as Department]} · {authorName}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <Badge variant="outline" className="text-[10px]">
             {new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
           </Badge>
           {canDelete && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="rounded-full p-1 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                className="rounded-full p-1 hover:bg-primary/20 text-muted-foreground hover:text-primary transition"
+                title="Edit pack"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="rounded-full p-1 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition"
+                title="Delete pack"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </>
           )}
         </div>
       </button>
@@ -127,6 +139,142 @@ function PosterCard({ r, authorName, canDelete, onDelete }: { r: any; authorName
   );
 }
 
+function EditPosterDialog({ row, open, onOpenChange, onSaved, userId }: {
+  row: any; open: boolean; onOpenChange: (o: boolean) => void; onSaved: () => void; userId: string;
+}) {
+  const [dept, setDept] = useState<Department>(row.department ?? "entertainment");
+  const [title, setTitle] = useState(row.title ?? "");
+  const [posterMessage, setPosterMessage] = useState(row.poster_message ?? "");
+  const [f3Message, setF3Message] = useState(row.f3_message ?? "");
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(row.poster_image_url ?? null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submittingRef = useRef(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function pickFile(f: File) {
+    setImageFile(f);
+    setImagePreview(URL.createObjectURL(f));
+  }
+
+  function clearNewImage() {
+    setImageFile(null);
+    setImagePreview(null);
+  }
+
+  async function save() {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setBusy(true);
+
+    let posterImageUrl = existingImageUrl;
+
+    if (imageFile) {
+      const path = `${userId}/${Date.now()}-${imageFile.name}`;
+      const { error: ue } = await supabase.storage.from("posters").upload(path, imageFile, { contentType: imageFile.type });
+      if (ue) {
+        setBusy(false);
+        submittingRef.current = false;
+        toast.error("Image upload failed: " + ue.message);
+        return;
+      }
+      const { data } = supabase.storage.from("posters").getPublicUrl(path);
+      posterImageUrl = data.publicUrl;
+    }
+
+    const { error } = await supabase.from("interactions").update({
+      department: dept,
+      title: title.trim() || "Poster Pack",
+      poster_message: posterMessage.trim() || null,
+      poster_image_url: posterImageUrl,
+      f3_message: f3Message.trim() || null,
+    }).eq("id", row.id);
+
+    setBusy(false);
+    submittingRef.current = false;
+
+    if (error) { toast.error(error.message); return; }
+    toast.success("Pack updated");
+    onSaved();
+    onOpenChange(false);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Edit poster pack</DialogTitle></DialogHeader>
+        <div className="space-y-4 mt-1">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Label</Label>
+              <input
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="e.g. Friday Night Quiz"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Department</Label>
+              <select
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={dept}
+                onChange={(e) => setDept(e.target.value as Department)}
+              >
+                {DEPARTMENTS.map(d => <option key={d} value={d}>{DEPT_LABEL[d]}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Poster message <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Textarea value={posterMessage} onChange={(e) => setPosterMessage(e.target.value)} rows={3} />
+          </div>
+          <div className="space-y-2">
+            <Label>Poster image <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            {existingImageUrl && !imagePreview && (
+              <div className="relative w-fit">
+                <img src={existingImageUrl} alt="current poster" className="h-28 rounded-lg border border-border object-cover" />
+                <button
+                  onClick={() => setExistingImageUrl(null)}
+                  className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground p-0.5"
+                  title="Remove image"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && pickFile(e.target.files[0])} />
+            {imagePreview ? (
+              <div className="relative w-full rounded-lg overflow-hidden border border-border">
+                <img src={imagePreview} alt="new preview" className="w-full max-h-48 object-contain" />
+                <button
+                  onClick={clearNewImage}
+                  className="absolute top-2 right-2 rounded-full bg-background/80 p-0.5 hover:bg-destructive hover:text-destructive-foreground transition"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => fileRef.current?.click()}>
+                <Upload className="h-3.5 w-3.5 mr-1.5" />
+                {existingImageUrl ? "Replace image" : "Upload image"}
+              </Button>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label>F3 message <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Textarea value={f3Message} onChange={(e) => setF3Message(e.target.value)} rows={2} />
+          </div>
+          <Button className="w-full" onClick={save} disabled={busy}>
+            {busy ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function UploadPosterDialog({ open, onOpenChange, onUploaded }: {
   open: boolean; onOpenChange: (o: boolean) => void; onUploaded: () => void;
 }) {
@@ -138,10 +286,12 @@ function UploadPosterDialog({ open, onOpenChange, onUploaded }: {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const submittingRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   function reset() {
     setTitle(""); setPosterMessage(""); setF3Message(""); setImageFile(null); setImagePreview(null);
+    submittingRef.current = false;
   }
 
   function pickFile(f: File) {
@@ -150,17 +300,23 @@ function UploadPosterDialog({ open, onOpenChange, onUploaded }: {
   }
 
   async function submit() {
-    if (!user) return;
+    if (submittingRef.current || !user) return;
     if (!posterMessage.trim() && !imageFile && !f3Message.trim()) {
       toast.error("Add at least one piece of content"); return;
     }
+    submittingRef.current = true;
     setBusy(true);
 
     let posterImageUrl: string | null = null;
     if (imageFile) {
       const path = `${user.id}/${Date.now()}-${imageFile.name}`;
       const { error: ue } = await supabase.storage.from("posters").upload(path, imageFile, { contentType: imageFile.type });
-      if (ue) { setBusy(false); toast.error("Upload failed: " + ue.message); return; }
+      if (ue) {
+        setBusy(false);
+        submittingRef.current = false;
+        toast.error("Upload failed: " + ue.message);
+        return;
+      }
       const { data } = supabase.storage.from("posters").getPublicUrl(path);
       posterImageUrl = data.publicUrl;
     }
@@ -173,7 +329,10 @@ function UploadPosterDialog({ open, onOpenChange, onUploaded }: {
       poster_image_url: posterImageUrl,
       f3_message: f3Message.trim() || null,
     });
+
     setBusy(false);
+    submittingRef.current = false;
+
     if (error) { toast.error(error.message); return; }
     toast.success("Poster pack uploaded");
     reset();
@@ -261,6 +420,7 @@ function PostersPage() {
   const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [editRow, setEditRow] = useState<any | null>(null);
   const [search, setSearch] = useState("");
 
   async function load() {
@@ -328,7 +488,7 @@ function PostersPage() {
       </div>
 
       {loading && (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {[1, 2, 3].map((i) => <Card key={i} className="rounded-2xl bg-card/60 h-14 animate-pulse" />)}
         </div>
       )}
@@ -351,6 +511,7 @@ function PostersPage() {
             authorName={profiles[r.author_id] ?? "—"}
             canDelete={isAuxPlus}
             onDelete={() => deleteRow(r.id)}
+            onEdit={() => setEditRow(r)}
           />
         ))}
       </div>
@@ -366,6 +527,16 @@ function PostersPage() {
         onOpenChange={setUploadOpen}
         onUploaded={() => { setUploadOpen(false); load(); }}
       />
+
+      {editRow && (
+        <EditPosterDialog
+          row={editRow}
+          open={!!editRow}
+          onOpenChange={(o) => { if (!o) setEditRow(null); }}
+          onSaved={load}
+          userId={user?.id ?? ""}
+        />
+      )}
     </div>
   );
 }

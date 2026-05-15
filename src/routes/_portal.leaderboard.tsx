@@ -1,9 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, CheckCircle2, XCircle, Calendar, Users, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Trophy, CheckCircle2, XCircle, Calendar, Users, Star, RotateCcw, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_portal/leaderboard")({ component: Leaderboard });
 
@@ -16,50 +21,100 @@ function medalClass(i: number) {
   return "bg-muted text-muted-foreground";
 }
 
+function ResetDialog({ open, onOpenChange, onConfirmed, title, description, warning }: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  onConfirmed: () => Promise<void>;
+  title: string;
+  description: string;
+  warning: string;
+}) {
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function confirm() {
+    if (input !== "RESET") return;
+    setBusy(true);
+    await onConfirmed();
+    setBusy(false);
+    setInput("");
+    onOpenChange(false);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) setInput(""); onOpenChange(o); }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" />{title}</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">{description}</p>
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            {warning}
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm">Type <strong>RESET</strong> to confirm:</p>
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value.toUpperCase())}
+              placeholder="RESET"
+              autoComplete="off"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="destructive"
+              className="flex-1"
+              disabled={input !== "RESET" || busy}
+              onClick={confirm}
+            >
+              {busy ? "Resetting…" : "Confirm reset"}
+            </Button>
+            <Button variant="outline" onClick={() => { setInput(""); onOpenChange(false); }}>Cancel</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Leaderboard() {
+  const { isManager } = useAuth();
   const [pts, setPts] = useState<{ user_id: string; amount: number; awarded_at: string }[]>([]);
   const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [slots, setSlots] = useState<{ status: string; slot_start: string }[]>([]);
   const [attendanceToday, setAttendanceToday] = useState<Record<string, number>>({});
+  const [resetPointsOpen, setResetPointsOpen] = useState(false);
+  const [resetInteractionsOpen, setResetInteractionsOpen] = useState(false);
 
   const todayStart = useMemo(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString();
   }, []);
 
+  async function fetchData() {
+    const since35 = new Date(Date.now() - 35 * 86400_000).toISOString();
+
+    const [{ data: ptsData }, { data: pf }, { data: slotsData }, { data: todayPts }] = await Promise.all([
+      supabase.from("points_log").select("user_id, amount, awarded_at").gte("awarded_at", since35),
+      supabase.from("profiles").select("id, display_name"),
+      supabase.from("schedule_slots").select("status, slot_start").gte("slot_start", new Date(Date.now() - 7 * 86400_000).toISOString()).lte("slot_start", new Date().toISOString()),
+      supabase.from("points_log").select("user_id, amount").gte("awarded_at", todayStart),
+    ]);
+
+    setPts((ptsData ?? []) as any);
+    setProfiles(Object.fromEntries((pf ?? []).map((x: any) => [x.id, x.display_name])));
+    setSlots((slotsData ?? []) as any);
+
+    const todayMap: Record<string, number> = {};
+    (todayPts ?? []).forEach((p: any) => {
+      todayMap[p.user_id] = (todayMap[p.user_id] ?? 0) + (p.amount ?? 0);
+    });
+    setAttendanceToday(todayMap);
+  }
+
   useEffect(() => {
-    (async () => {
-      const since35 = new Date(Date.now() - 35 * 86400_000).toISOString();
-
-      const [{ data: ptsData }, { data: pf }, { data: slotsData }, { data: todayPts }] = await Promise.all([
-        supabase.from("points_log").select("user_id, amount, awarded_at").gte("awarded_at", since35),
-        supabase.from("profiles").select("id, display_name"),
-        supabase.from("schedule_slots").select("status, slot_start").gte("slot_start", new Date(Date.now() - 7 * 86400_000).toISOString()).lte("slot_start", new Date().toISOString()),
-        supabase.from("points_log").select("user_id, amount").gte("awarded_at", todayStart),
-      ]);
-
-      setPts((ptsData ?? []) as any);
-      setProfiles(Object.fromEntries((pf ?? []).map((x: any) => [x.id, x.display_name])));
-      setSlots((slotsData ?? []) as any);
-
-      const todayMap: Record<string, number> = {};
-      (todayPts ?? []).forEach((p: any) => {
-        todayMap[p.user_id] = (todayMap[p.user_id] ?? 0) + (p.amount ?? 0);
-      });
-      setAttendanceToday(todayMap);
-    })();
+    fetchData();
 
     const ch = supabase.channel("points-lb")
-      .on("postgres_changes", { event: "*", schema: "public", table: "points_log" }, async () => {
-        const since35 = new Date(Date.now() - 35 * 86400_000).toISOString();
-        const [{ data: p }, { data: td }] = await Promise.all([
-          supabase.from("points_log").select("user_id, amount, awarded_at").gte("awarded_at", since35),
-          supabase.from("points_log").select("user_id, amount").gte("awarded_at", todayStart),
-        ]);
-        setPts((p ?? []) as any);
-        const todayMap: Record<string, number> = {};
-        (td ?? []).forEach((x: any) => { todayMap[x.user_id] = (todayMap[x.user_id] ?? 0) + (x.amount ?? 0); });
-        setAttendanceToday(todayMap);
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "points_log" }, fetchData)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [todayStart]);
@@ -76,19 +131,13 @@ function Leaderboard() {
   const weekly = useMemo(() => aggregate(7 * 86400_000), [pts]);
   const monthly = useMemo(() => aggregate(30 * 86400_000), [pts]);
 
-  const missedSlots = useMemo(() => {
-    return slots.filter(s => s.status !== "completed").length;
-  }, [slots]);
-
+  const missedSlots = useMemo(() => slots.filter(s => s.status !== "completed").length, [slots]);
   const totalSlots = slots.length;
   const completedSlots = slots.filter(s => s.status === "completed").length;
   const completionPct = totalSlots > 0 ? Math.round((completedSlots / totalSlots) * 100) : 0;
 
   const dailyMinMembers = useMemo(() => {
-    const allIds = new Set([
-      ...Object.keys(attendanceToday),
-      ...Object.keys(profiles),
-    ]);
+    const allIds = new Set([...Object.keys(attendanceToday), ...Object.keys(profiles)]);
     return Array.from(allIds)
       .filter(id => profiles[id])
       .map(id => ({ id, name: profiles[id], pts: attendanceToday[id] ?? 0, hit: (attendanceToday[id] ?? 0) >= DAILY_MIN }))
@@ -96,6 +145,20 @@ function Leaderboard() {
   }, [attendanceToday, profiles]);
 
   const hitMin = dailyMinMembers.filter(m => m.hit).length;
+
+  async function resetPoints() {
+    const { error } = await supabase.from("points_log").delete().gte("awarded_at", "2000-01-01");
+    if (error) { toast.error(error.message); return; }
+    toast.success("All points data cleared");
+    fetchData();
+  }
+
+  async function resetInteractions() {
+    const { error } = await supabase.from("interactions").delete().gte("created_at", "2000-01-01");
+    if (error) { toast.error(error.message); return; }
+    toast.success("All interaction records cleared");
+    fetchData();
+  }
 
   return (
     <div className="space-y-6">
@@ -106,7 +169,6 @@ function Leaderboard() {
         <p className="text-sm text-muted-foreground">Live performance across the team.</p>
       </div>
 
-      {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="rounded-2xl bg-card/60 p-5">
           <div className="flex items-center justify-between mb-3">
@@ -142,7 +204,6 @@ function Leaderboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Weekly top 10 */}
         <Card className="rounded-2xl bg-card/60 p-5">
           <div className="flex items-center gap-2 mb-4">
             <Trophy className="h-4 w-4 text-[oklch(0.78_0.16_75)]" />
@@ -160,7 +221,6 @@ function Leaderboard() {
           </div>
         </Card>
 
-        {/* Monthly top 10 */}
         <Card className="rounded-2xl bg-card/60 p-5">
           <div className="flex items-center gap-2 mb-4">
             <Trophy className="h-4 w-4 text-[oklch(0.7_0.02_260)]" />
@@ -179,7 +239,6 @@ function Leaderboard() {
         </Card>
       </div>
 
-      {/* Daily minimum tracker */}
       <Card className="rounded-2xl bg-card/60 p-5">
         <div className="flex items-center gap-2 mb-4">
           <Users className="h-4 w-4 text-muted-foreground" />
@@ -205,6 +264,52 @@ function Leaderboard() {
           ))}
         </div>
       </Card>
+
+      {isManager && (
+        <Card className="rounded-2xl bg-card/60 p-5 border-destructive/20">
+          <div className="flex items-center gap-2 mb-1">
+            <RotateCcw className="h-4 w-4 text-destructive" />
+            <h2 className="text-sm font-semibold tracking-wide">Data Management</h2>
+            <Badge variant="destructive" className="ml-auto text-[10px]">Manager only</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Permanently delete records. These actions cannot be undone.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="rounded-xl border border-border bg-background/30 p-4 space-y-2">
+              <p className="text-sm font-medium">Reset leaderboard</p>
+              <p className="text-xs text-muted-foreground">Deletes all points records. Weekly and monthly rankings will be cleared for everyone.</p>
+              <Button variant="destructive" size="sm" className="w-full mt-1" onClick={() => setResetPointsOpen(true)}>
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset points
+              </Button>
+            </div>
+            <div className="rounded-xl border border-border bg-background/30 p-4 space-y-2">
+              <p className="text-sm font-medium">Reset interactions log</p>
+              <p className="text-xs text-muted-foreground">Deletes all logged interactions. Dashboard stats and recent activity will be cleared.</p>
+              <Button variant="destructive" size="sm" className="w-full mt-1" onClick={() => setResetInteractionsOpen(true)}>
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset interactions
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      <ResetDialog
+        open={resetPointsOpen}
+        onOpenChange={setResetPointsOpen}
+        onConfirmed={resetPoints}
+        title="Reset all points"
+        description="This will permanently delete every entry in the points log. All weekly and monthly leaderboard rankings will be wiped."
+        warning="This cannot be undone. All staff points will be lost."
+      />
+      <ResetDialog
+        open={resetInteractionsOpen}
+        onOpenChange={setResetInteractionsOpen}
+        onConfirmed={resetInteractions}
+        title="Reset all interactions"
+        description="This will permanently delete every logged interaction. Dashboard stats, recent activity, and poster packs stored as interactions will all be removed."
+        warning="This cannot be undone. All interaction history will be lost permanently."
+      />
     </div>
   );
 }
