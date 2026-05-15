@@ -66,18 +66,22 @@ export function isManager(roles: Role[]): boolean {
 // Build 30-min slot times for a given local date — returns ISO strings (UTC).
 export function buildDaySlots(date: Date): string[] {
   const slots: string[] = [];
-  const base = new Date(date);
-  base.setHours(0, 0, 0, 0);
+  const londonDateStr = date.toLocaleDateString("sv-SE", { timeZone: "Europe/London" });
+  const utcMidnight = new Date(`${londonDateStr}T00:00:00Z`);
+  const londonTimeStr = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(utcMidnight);
+  const [lh, lm] = londonTimeStr.split(":").map(Number);
+  const londonMidnightMs = utcMidnight.getTime() - (lh * 60 + lm) * 60 * 1000;
   for (let i = 0; i < 48; i++) {
-    const t = new Date(base.getTime() + i * 30 * 60 * 1000);
-    slots.push(t.toISOString());
+    slots.push(new Date(londonMidnightMs + i * 30 * 60 * 1000).toISOString());
   }
   return slots;
 }
 
 export function fmtSlot(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Europe/London" });
 }
 
 export function todayISO(): string {
