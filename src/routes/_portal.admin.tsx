@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,11 +13,13 @@ import { toast } from "sonner";
 import { Plus, Copy, Trash2 } from "lucide-react";
 import { ALL_ROLES, ROLE_LABEL, ROLE_RANK, DEPARTMENTS, DEPT_LABEL, type Role, type Department } from "@/lib/portal";
 
-export const Route = createFileRoute("/_portal/admin")({ component: Admin });
+export const Route = createFileRoute("/_portal/admin")({  component: Admin,
+});
 
 function Admin() {
   const { user, isAuxPlus, isManager, topRole } = useAuth();
   if (!isAuxPlus) return <p className="text-sm text-muted-foreground">AUX+ only.</p>;
+
   return (
     <div className="space-y-6">
       <div>
@@ -44,23 +46,28 @@ function Codes({ canManager, userId, actorTopRole }: { canManager: boolean; user
   const [dept, setDept] = useState<Department | "">("");
 
   async function load() {
-    const data = await api.signupCodes.list().catch(() => []);
-    setCodes(data);
+    const { data } = await supabase.from("signup_codes").select("*").order("created_at", { ascending: false });
+    setCodes(data ?? []);
   }
   useEffect(() => { load(); }, []);
 
-  function genCode() { return "KNG-" + Math.random().toString(36).slice(2, 8).toUpperCase(); }
+  function genCode() {
+    return "KNG-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+  }
 
   async function generate() {
     if (!allowedRoles.includes(role)) { toast.error("You cannot generate codes for that role."); return; }
     const code = genCode();
-    await api.signupCodes.create({ code, role, department: dept || null }).catch((e: any) => { toast.error(e.message); return null; });
-    toast.success("Code created"); load();
+    const { error } = await supabase.from("signup_codes").insert({
+      code, role, department: dept || null, created_by: userId,
+    });
+    if (error) toast.error(error.message);
+    else { toast.success("Code created"); load(); }
   }
 
   async function revoke(id: string) {
-    await api.signupCodes.revoke(id).catch((e: any) => { toast.error(e.message); return null; });
-    load();
+    const { error } = await supabase.from("signup_codes").update({ revoked: true }).eq("id", id);
+    if (error) toast.error(error.message); else load();
   }
 
   return (
@@ -113,20 +120,21 @@ function Prizes() {
   const [qty, setQty] = useState(1);
 
   async function load() {
-    const data = await api.prizes.list().catch(() => []);
-    setPrizes(data);
+    const { data } = await supabase.from("prizes").select("*").order("name");
+    setPrizes(data ?? []);
   }
   useEffect(() => { load(); }, []);
 
   async function add() {
     if (!code.trim() || !name.trim()) { toast.error("Code and name required"); return; }
-    await api.prizes.create({ code: code.trim(), name: name.trim(), default_quantity: qty }).catch((e: any) => { toast.error(e.message); return null; });
-    toast.success("Added"); setCode(""); setName(""); setQty(1); load();
+    const { error } = await supabase.from("prizes").insert({ code: code.trim(), name: name.trim(), default_quantity: qty });
+    if (error) toast.error(error.message);
+    else { toast.success("Added"); setCode(""); setName(""); setQty(1); load(); }
   }
 
   async function remove(id: string) {
-    await api.prizes.delete(id).catch((e: any) => { toast.error(e.message); return null; });
-    load();
+    const { error } = await supabase.from("prizes").delete().eq("id", id);
+    if (error) toast.error(error.message); else load();
   }
 
   return (

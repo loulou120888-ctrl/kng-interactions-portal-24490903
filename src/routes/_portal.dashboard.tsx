@@ -1,13 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Calendar, ClipboardList, Trophy, Megaphone } from "lucide-react";
 import { DEPT_LABEL, ROLE_LABEL } from "@/lib/portal";
 import { Link } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/_portal/dashboard")({ component: Dashboard });
+export const Route = createFileRoute("/_portal/dashboard")({
+  component: Dashboard,
+});
 
 function Dashboard() {
   const { user, topRole } = useAuth();
@@ -20,21 +22,19 @@ function Dashboard() {
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const todayISO = today.toISOString();
 
-      const [todayInteractions, pts, slotStats, anns, reads, recentI] = await Promise.all([
-        api.interactions.list({ limit: 1000 }).catch(() => [] as any[]),
-        api.points.me().catch(() => ({ total: 0, entries: [] })),
-        api.schedule.stats(todayISO).catch(() => ({ count: 0 })),
-        api.announcements.list().catch(() => [] as any[]),
-        api.announcements.reads().catch(() => [] as any[]),
-        api.interactions.list({ limit: 8 }),
+      const [{ count: todayCount }, { data: pts }, { count: slotCount }, { data: ann }, { data: reads }, { data: recentI }] = await Promise.all([
+        supabase.from("interactions").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
+        supabase.from("points_log").select("amount").eq("user_id", user.id),
+        supabase.from("schedule_slots").select("id", { count: "exact", head: true }).gte("slot_start", todayISO).eq("status", "booked"),
+        supabase.from("announcements").select("id"),
+        supabase.from("announcement_reads").select("announcement_id").eq("user_id", user.id),
+        supabase.from("interactions").select("id, title, department, created_at, author_id").order("created_at", { ascending: false }).limit(8),
       ]);
-
-      const todayCount = (todayInteractions as any[]).filter(r => new Date(r.created_at) >= today).length;
-      const readIds = new Set((reads as any[]).map((r: any) => r.announcement_id));
-      const unread = (anns as any[]).filter((a: any) => !readIds.has(a.id)).length;
-
-      setStats({ today: todayCount, totalPoints: (pts as any).total ?? 0, openSlots: slotStats.count ?? 0, unread });
-      setRecent(recentI as any[]);
+      const totalPoints = (pts ?? []).reduce((a, b) => a + (b.amount ?? 0), 0);
+      const readIds = new Set((reads ?? []).map((r: any) => r.announcement_id));
+      const unread = (ann ?? []).filter((a: any) => !readIds.has(a.id)).length;
+      setStats({ today: todayCount ?? 0, totalPoints, openSlots: slotCount ?? 0, unread });
+      setRecent(recentI ?? []);
     })();
   }, [user]);
 
