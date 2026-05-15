@@ -11,7 +11,7 @@ export const Route = createFileRoute("/login")({  component: LoginPage,
 });
 
 function internalEmail(username: string): string {
-  return `${username.toLowerCase().trim()}@kng.internal`;
+  return `${username.toLowerCase().trim()}@kngportal.com`;
 }
 
 function toEmail(input: string): string {
