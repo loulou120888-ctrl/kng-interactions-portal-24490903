@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ALL_ROLES, ROLE_LABEL, ROLE_RANK, DEPARTMENTS, DEPT_LABEL, type Department, type Role } from "@/lib/portal";
-import { UserCog, Pencil, UserX, UserCheck } from "lucide-react";
+import { UserCog, Pencil, UserX, UserCheck, KeyRound, Copy, Check } from "lucide-react";
 
 export const Route = createFileRoute("/_portal/staff")({ component: StaffPage });
 
@@ -187,6 +187,9 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
   const top = staff.roles.slice().sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0];
   const [role, setRole] = useState<Role>(top);
   const [busy, setBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [newPassword, setNewPassword] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const actorRank = ROLE_RANK[actorTopRole];
   const allowedRoles = ALL_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
@@ -223,8 +226,46 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
     onChanged();
   }
 
+  async function resetPassword() {
+    if (!confirm(`Generate a new password for ${staff.display_name}? Their current password will stop working immediately.`)) return;
+    setResetBusy(true);
+    setNewPassword(null);
+    setCopied(false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { toast.error("Not authenticated"); setResetBusy(false); return; }
+
+      const res = await fetch("/api/admin/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ targetUserId: staff.id }),
+      });
+      const body = await res.json() as { password?: string; error?: string };
+      if (!res.ok || !body.password) {
+        toast.error(body.error ?? "Reset failed");
+      } else {
+        setNewPassword(body.password);
+        toast.success("Password reset — share it securely with the staff member");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Network error");
+    }
+    setResetBusy(false);
+  }
+
+  function copyPassword() {
+    if (!newPassword) return;
+    navigator.clipboard.writeText(newPassword);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) setNewPassword(null); onOpenChange(o); }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit {staff.display_name}</DialogTitle>
@@ -277,8 +318,44 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
               </Button>
             )}
           </div>
+
+          {canManager && (
+            <div className="border-t border-border pt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium flex items-center gap-1.5">
+                    <KeyRound className="h-3.5 w-3.5" /> Password reset
+                  </p>
+                  <p className="text-xs text-muted-foreground">Generates a new random password instantly.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={resetPassword}
+                  disabled={resetBusy}
+                >
+                  {resetBusy ? "Resetting…" : "Reset password"}
+                </Button>
+              </div>
+
+              {newPassword && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">New password — share this securely then it won't be shown again:</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 rounded-lg bg-background border border-border px-3 py-2 text-sm font-mono tracking-widest select-all">
+                      {newPassword}
+                    </code>
+                    <Button size="icon" variant="outline" onClick={copyPassword} className="flex-shrink-0">
+                      {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
