@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ALL_ROLES, ROLE_LABEL, DEPARTMENTS, DEPT_LABEL, ROLE_RANK, type Department, type Role } from "@/lib/portal";
-import { UserCog, Pencil, UserX, UserCheck } from "lucide-react";
+import { UserCog, Pencil, UserX, UserCheck, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_portal/staff")({ component: StaffPage });
 
@@ -21,11 +21,21 @@ interface Staff {
   status: string; deactivated: boolean; roles: Role[];
 }
 
+type DeptFilter = "all" | Department;
+
+const DEPT_TABS: { key: DeptFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "events", label: "Events" },
+  { key: "parties", label: "Parties" },
+  { key: "entertainment", label: "Entertainment" },
+];
+
 function StaffPage() {
   const { user, isAuxPlus, isManager, topRole } = useAuth();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [edit, setEdit] = useState<Staff | null>(null);
   const [showDeactivated, setShowDeactivated] = useState(false);
+  const [deptFilter, setDeptFilter] = useState<DeptFilter>("all");
 
   async function load() {
     const [profiles, roles] = await Promise.all([
@@ -39,14 +49,24 @@ function StaffPage() {
   useEffect(() => { load(); }, []);
 
   const actorRank = ROLE_RANK[topRole];
-  const visible = showDeactivated ? staff : staff.filter(s => !s.deactivated);
+
+  const visible = staff
+    .filter(s => showDeactivated || !s.deactivated)
+    .filter(s => deptFilter === "all" || s.department === deptFilter);
+
+  const countByDept = (dept: DeptFilter) =>
+    staff.filter(s => !s.deactivated && (dept === "all" || s.department === dept)).length;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Staff Directory</h1>
-          <p className="text-sm text-muted-foreground">{isAuxPlus ? "Promote, demote, rename or deactivate staff." : "Browse staff directory."}</p>
+          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+            <Users className="h-6 w-6" /> Staff Directory
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isAuxPlus ? "Promote, demote, rename or deactivate staff." : "Browse staff directory."}
+          </p>
         </div>
         {isManager && (
           <Button variant="outline" size="sm" onClick={() => setShowDeactivated(v => !v)}>
@@ -54,7 +74,32 @@ function StaffPage() {
           </Button>
         )}
       </div>
+
+      <div className="flex rounded-xl border border-border overflow-hidden w-fit">
+        {DEPT_TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setDeptFilter(tab.key)}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition border-r border-border last:border-r-0
+              ${deptFilter === tab.key
+                ? "bg-primary text-primary-foreground"
+                : "bg-background hover:bg-muted/50 text-muted-foreground"
+              }`}
+          >
+            {tab.label}
+            <span className={`text-[10px] font-mono rounded-full px-1.5 py-0.5 ${deptFilter === tab.key ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"}`}>
+              {countByDept(tab.key)}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {visible.length === 0 && (
+          <div className="col-span-full py-12 text-center text-sm text-muted-foreground">
+            No staff in {deptFilter === "all" ? "directory" : DEPT_LABEL[deptFilter as Department]} yet.
+          </div>
+        )}
         {visible.map((s) => {
           const top = s.roles.slice().sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0];
           const canEdit = isAuxPlus && s.id !== user?.id && actorRank > ROLE_RANK[top];
@@ -80,6 +125,7 @@ function StaffPage() {
           );
         })}
       </div>
+
       {edit && (
         <EditStaffDialog staff={edit} open={!!edit} onOpenChange={o => !o && setEdit(null)}
           canManager={isManager} actorTopRole={topRole} onChanged={() => { setEdit(null); load(); }} />
