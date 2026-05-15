@@ -22,39 +22,20 @@ interface Slot {
   interaction_id: string | null;
 }
 
-function getLondonToday(): Date {
-  const londonStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/London" });
-  const [y, m, d] = londonStr.split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
-
 export function ScheduleView({ scheduleType, title, allowedDepartments }: {
   scheduleType: ScheduleType; title: string; allowedDepartments: Department[];
 }) {
   const { user, isAuxPlus } = useAuth();
-  const [date, setDate] = useState<Date>(getLondonToday);
+  const [date, setDate] = useState<Date>(() => { const d = new Date(); d.setHours(0,0,0,0); return d; });
   const [slots, setSlots] = useState<Slot[]>([]);
   const [profileMap, setProfileMap] = useState<Record<string, { display_name: string }>>({});
   const [openSlot, setOpenSlot] = useState<string | null>(null);
   const [logSlot, setLogSlot] = useState<Slot | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
 
   const slotTimes = useMemo(() => buildDaySlots(date), [date]);
   const dayStart = slotTimes[0];
   const dayEnd = new Date(new Date(dayStart).getTime() + 24 * 3600 * 1000).toISOString();
-
-  const currentISO = useMemo(() => {
-    return slotTimes.find(iso => {
-      const start = new Date(iso).getTime();
-      return now.getTime() >= start && now.getTime() < start + 30 * 60 * 1000;
-    }) ?? null;
-  }, [slotTimes, now]);
 
   async function load() {
     const data = await api.schedule.list(scheduleType, dayStart, dayEnd).catch(() => [] as any[]);
@@ -94,7 +75,7 @@ export function ScheduleView({ scheduleType, title, allowedDepartments }: {
           <Button variant="outline" size="icon" onClick={() => shiftDay(-1)}><ChevronLeft className="h-4 w-4" /></Button>
           <div className="px-3 py-1.5 rounded-md border border-border text-sm">{date.toDateString()}</div>
           <Button variant="outline" size="icon" onClick={() => shiftDay(1)}><ChevronRight className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="sm" onClick={() => setDate(getLondonToday())}>Today</Button>
+          <Button variant="ghost" size="sm" onClick={() => { const d = new Date(); d.setHours(0,0,0,0); setDate(d); }}>Today</Button>
           <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}><Layers className="h-4 w-4 mr-1.5" /> Bulk add</Button>
         </div>
       </div>
@@ -102,25 +83,17 @@ export function ScheduleView({ scheduleType, title, allowedDepartments }: {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {slotTimes.map((iso) => {
             const slot = slotMap[iso];
-            const isCurrent = iso === currentISO;
             const isMine = slot?.booked_by === user?.id;
             const isMyClain = slot?.claimed_by === user?.id;
             const canManage = isMine || isAuxPlus;
             const canLog = isMyClain || isMine || isAuxPlus;
-
-            let borderCls = "border-border bg-background/40";
-            if (isCurrent && !slot) borderCls = "border-green-500 bg-green-500/10 ring-1 ring-green-500/30";
-            else if (isCurrent && slot) borderCls = `${DEPT_BORDER[slot.department]} bg-card ring-1 ring-green-500/50`;
-            else if (slot) borderCls = `${DEPT_BORDER[slot.department]} bg-card`;
-
             return (
               <Dialog key={iso} open={openSlot === iso} onOpenChange={(o) => setOpenSlot(o ? iso : null)}>
                 <DialogTrigger asChild>
-                  <button className={`relative text-left rounded-xl border p-3 transition hover:border-primary/50 ${borderCls}`}>
+                  <button className={`relative text-left rounded-xl border p-3 transition hover:border-primary/50 ${slot ? `${DEPT_BORDER[slot.department]} bg-card` : "border-border bg-background/40"}`}>
                     <div className="flex items-center justify-between text-xs">
-                      <span className={`font-mono ${isCurrent ? "text-green-400 font-semibold" : "text-muted-foreground"}`}>{fmtSlot(iso)}</span>
-                      {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />}
-                      {slot && !isCurrent && <span className={`h-2 w-2 rounded-full ${DEPT_BG[slot.department]}`} />}
+                      <span className="font-mono text-muted-foreground">{fmtSlot(iso)}</span>
+                      {slot && <span className={`h-2 w-2 rounded-full ${DEPT_BG[slot.department]}`} />}
                     </div>
                     {slot ? (
                       <div className="mt-2">

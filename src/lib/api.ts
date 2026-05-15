@@ -57,7 +57,6 @@ export const api = {
     },
     create: (data: any) =>
       apiFetch("/interactions", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: string, data: any) => apiFetch(`/interactions/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     delete: (id: string) => apiFetch(`/interactions/${id}`, { method: "DELETE" }),
   },
 
@@ -101,7 +100,6 @@ export const api = {
       return apiFetch<any[]>(`/points?${sp}`);
     },
     me: () => apiFetch<{ total: number; entries: any[] }>("/points/me"),
-    reset: () => apiFetch("/points", { method: "DELETE" }),
   },
 
   hall: {

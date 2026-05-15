@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../db.js";
-import { pointsLog, userRoles } from "../../shared/schema.js";
+import { pointsLog } from "../../shared/schema.js";
 import { eq, gte, desc } from "drizzle-orm";
 import { requireAuth } from "../middleware.js";
 
@@ -24,20 +24,6 @@ pointsRouter.get("/me", requireAuth, async (req, res) => {
     const rows = await db.select().from(pointsLog).where(eq(pointsLog.user_id, req.session.userId!));
     const total = rows.reduce((a, b) => a + (b.amount ?? 0), 0);
     res.json({ total, entries: rows });
-  } catch (err) {
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-pointsRouter.delete("/", requireAuth, async (req, res) => {
-  try {
-    const roles = await db.select().from(userRoles).where(eq(userRoles.user_id, req.session.userId!));
-    if (!roles.some(r => r.role === "manager")) {
-      res.status(403).json({ error: "Manager only" });
-      return;
-    }
-    await db.delete(pointsLog);
-    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }

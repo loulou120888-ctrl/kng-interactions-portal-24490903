@@ -98,21 +98,6 @@ interactionsRouter.post("/", requireAuth, async (req, res) => {
   }
 });
 
-interactionsRouter.patch("/:id", requireAuth, async (req, res) => {
-  const { title, poster_message, f3_message, poster_image_url } = req.body;
-  try {
-    const patch: Record<string, any> = { updated_at: new Date() };
-    if (title !== undefined) patch.title = title;
-    if (poster_message !== undefined) patch.poster_message = poster_message || null;
-    if (f3_message !== undefined) patch.f3_message = f3_message || null;
-    if (poster_image_url !== undefined) patch.poster_image_url = poster_image_url || null;
-    const [row] = await db.update(interactions).set(patch).where(eq(interactions.id, req.params.id)).returning();
-    res.json(row);
-  } catch (err) {
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
 interactionsRouter.delete("/:id", requireAuth, async (req, res) => {
   try {
     await db.delete(interactions).where(eq(interactions.id, req.params.id));

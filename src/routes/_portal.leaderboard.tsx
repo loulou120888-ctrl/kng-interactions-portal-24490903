@@ -1,13 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Trophy, CheckCircle2, XCircle, Calendar, Users, Star, RotateCcw, AlertTriangle } from "lucide-react";
-import { toast } from "sonner";
+import { Trophy, CheckCircle2, XCircle, Calendar, Users, Star } from "lucide-react";
 
 export const Route = createFileRoute("/_portal/leaderboard")({ component: Leaderboard });
 
@@ -28,41 +24,37 @@ const PERIOD_LABELS: Record<Period, string> = {
 };
 
 function Leaderboard() {
-  const { isManager } = useAuth();
   const [pts, setPts] = useState<{ user_id: string; amount: number; awarded_at: string }[]>([]);
   const [profileMap, setProfileMap] = useState<Record<string, string>>({});
   const [slots, setSlots] = useState<{ status: string; slot_start: string }[]>([]);
   const [attendanceToday, setAttendanceToday] = useState<Record<string, number>>({});
   const [period, setPeriod] = useState<Period>("weekly");
-  const [resetOpen, setResetOpen] = useState(false);
-  const [resetBusy, setResetBusy] = useState(false);
 
   const todayStart = useMemo(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString();
   }, []);
 
-  async function load() {
-    const since35 = new Date(Date.now() - 35 * 86400_000).toISOString();
-    const since7 = new Date(Date.now() - 7 * 86400_000).toISOString();
-
-    const [ptsData, pf, slotsData, todayPts] = await Promise.all([
-      api.points.list({ since: since35 }).catch(() => [] as any[]),
-      api.profiles.list().catch(() => [] as any[]),
-      api.schedule.performance(since7).catch(() => [] as any[]),
-      api.points.list({ since: todayStart }).catch(() => [] as any[]),
-    ]);
-
-    setPts(ptsData as any);
-    setProfileMap(Object.fromEntries(pf.map((x: any) => [x.id, x.display_name])));
-    setSlots(slotsData as any);
-
-    const todayMap: Record<string, number> = {};
-    (todayPts as any[]).forEach((p: any) => { todayMap[p.user_id] = (todayMap[p.user_id] ?? 0) + (p.amount ?? 0); });
-    setAttendanceToday(todayMap);
-  }
-
   useEffect(() => {
-    load();
+    (async () => {
+      const since35 = new Date(Date.now() - 35 * 86400_000).toISOString();
+      const since7 = new Date(Date.now() - 7 * 86400_000).toISOString();
+
+      const [ptsData, pf, slotsData, todayPts] = await Promise.all([
+        api.points.list({ since: since35 }).catch(() => [] as any[]),
+        api.profiles.list().catch(() => [] as any[]),
+        api.schedule.performance(since7).catch(() => [] as any[]),
+        api.points.list({ since: todayStart }).catch(() => [] as any[]),
+      ]);
+
+      setPts(ptsData as any);
+      setProfileMap(Object.fromEntries(pf.map((x: any) => [x.id, x.display_name])));
+      setSlots(slotsData as any);
+
+      const todayMap: Record<string, number> = {};
+      (todayPts as any[]).forEach((p: any) => { todayMap[p.user_id] = (todayMap[p.user_id] ?? 0) + (p.amount ?? 0); });
+      setAttendanceToday(todayMap);
+    })();
+
     const interval = setInterval(async () => {
       const since35 = new Date(Date.now() - 35 * 86400_000).toISOString();
       const [p, td] = await Promise.all([
@@ -76,21 +68,6 @@ function Leaderboard() {
     }, 30000);
     return () => clearInterval(interval);
   }, [todayStart]);
-
-  async function confirmReset() {
-    setResetBusy(true);
-    try {
-      await api.points.reset();
-      toast.success("Leaderboard reset — all points cleared");
-      setResetOpen(false);
-      setPts([]);
-      setAttendanceToday({});
-    } catch (e: any) {
-      toast.error(e.message ?? "Failed to reset");
-    } finally {
-      setResetBusy(false);
-    }
-  }
 
   function aggregate(sinceMs: number) {
     const cutoff = Date.now() - sinceMs;
@@ -124,18 +101,10 @@ function Leaderboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2"><Trophy className="h-6 w-6" /> Staff Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Live performance across the team.</p>
-        </div>
-        {isManager && (
-          <Button variant="outline" size="sm" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={() => setResetOpen(true)}>
-            <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset leaderboard
-          </Button>
-        )}
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2"><Trophy className="h-6 w-6" /> Staff Dashboard</h1>
+        <p className="text-sm text-muted-foreground">Live performance across the team.</p>
       </div>
-
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="rounded-2xl bg-card/60 p-5">
           <div className="flex items-center justify-between mb-3"><p className="text-xs uppercase tracking-wider text-muted-foreground">Events this week</p><Calendar className="h-4 w-4 text-muted-foreground" /></div>
@@ -198,19 +167,6 @@ function Leaderboard() {
           ))}
         </div>
       </Card>
-
-      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-4 w-4" /> Reset leaderboard?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">This will permanently delete <span className="text-foreground font-medium">all points</span> for every staff member. The stats cards and daily tracker will be cleared. This cannot be undone.</p>
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => setResetOpen(false)} disabled={resetBusy}>Cancel</Button>
-            <Button variant="destructive" className="flex-1" onClick={confirmReset} disabled={resetBusy}>
-              {resetBusy ? "Resetting…" : "Yes, reset all points"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

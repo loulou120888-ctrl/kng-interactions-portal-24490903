@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DEPT_LABEL, DEPT_BG, DEPARTMENTS, type Department } from "@/lib/portal";
-import { Copy, Check, ImageIcon, FileText, Radio, Plus, Upload, X, Trash2, ChevronDown, ChevronUp, Search, Pencil } from "lucide-react";
+import { Copy, Check, ImageIcon, FileText, Radio, Plus, Upload, X, Trash2, ChevronDown, ChevronUp, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_portal/posters")({ component: PostersPage });
@@ -43,102 +43,10 @@ function CopyChip({ label, icon: Icon, text, copyKey }: { label: string; icon: R
   );
 }
 
-function EditPosterDialog({ r, open, onOpenChange, onSaved }: { r: any; open: boolean; onOpenChange: (o: boolean) => void; onSaved: (updated: any) => void; }) {
-  const [title, setTitle] = useState(r.title ?? "");
-  const [posterMessage, setPosterMessage] = useState(r.poster_message ?? "");
-  const [f3Message, setF3Message] = useState(r.f3_message ?? "");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(r.poster_image_url ?? null);
-  const [busy, setBusy] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setTitle(r.title ?? "");
-    setPosterMessage(r.poster_message ?? "");
-    setF3Message(r.f3_message ?? "");
-    setImageFile(null);
-    setImagePreview(r.poster_image_url ?? null);
-  }, [r.id, open]);
-
-  function pickFile(f: File) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); }
-
-  async function submit() {
-    setBusy(true);
-    try {
-      let posterImageUrl = r.poster_image_url;
-      if (imageFile) {
-        const { public_url } = await api.uploads.upload("posters", imageFile);
-        posterImageUrl = public_url;
-      } else if (imagePreview === null) {
-        posterImageUrl = null;
-      }
-      const updated = await api.interactions.update(r.id, {
-        title: title.trim() || "Poster Pack",
-        poster_message: posterMessage.trim() || null,
-        f3_message: f3Message.trim() || null,
-        poster_image_url: posterImageUrl,
-      });
-      toast.success("Poster pack updated");
-      onSaved(updated);
-      onOpenChange(false);
-    } catch (e: any) {
-      toast.error(e.message ?? "Failed to save");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Edit poster / promo pack</DialogTitle></DialogHeader>
-        <div className="space-y-4 mt-1">
-          <div className="space-y-2">
-            <Label>Label</Label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Friday Night Quiz" />
-          </div>
-          <div className="space-y-2">
-            <Label>Poster message <span className="text-muted-foreground font-normal">(optional)</span></Label>
-            <Textarea value={posterMessage} onChange={e => setPosterMessage(e.target.value)} rows={3} placeholder="e.g. 🎉 Friday Night Quiz is LIVE!" />
-          </div>
-          <div className="space-y-2">
-            <Label>Poster image <span className="text-muted-foreground font-normal">(optional)</span></Label>
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => e.target.files?.[0] && pickFile(e.target.files[0])} />
-            <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => fileRef.current?.click()}>
-              <Upload className="h-3.5 w-3.5 mr-1.5" /> {imageFile ? imageFile.name : "Replace image"}
-            </Button>
-            {imagePreview && (
-              <div className="relative w-full rounded-lg overflow-hidden border border-border">
-                <img src={imagePreview} alt="preview" className="w-full max-h-48 object-contain" />
-                <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute top-2 right-2 rounded-full bg-background/80 p-0.5 hover:bg-destructive hover:text-destructive-foreground transition"><X className="h-3 w-3" /></button>
-              </div>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label>F3 message <span className="text-muted-foreground font-normal">(optional)</span></Label>
-            <Textarea value={f3Message} onChange={e => setF3Message(e.target.value)} rows={2} placeholder="e.g. /f3 message…" />
-          </div>
-          <div className="flex gap-2">
-            <Button type="button" className="flex-1" onClick={submit} disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function PosterCard({ r: initialR, authorName, canDelete, canEdit, onDelete, onUpdated }: {
-  r: any; authorName: string; canDelete: boolean; canEdit: boolean; onDelete: () => void; onUpdated: (updated: any) => void;
-}) {
+function PosterCard({ r, authorName, canDelete, onDelete }: { r: any; authorName: string; canDelete: boolean; onDelete: () => void }) {
   const { copiedKey, copy } = useCopy();
   const [open, setOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [r, setR] = useState(initialR);
   const imgCopied = copiedKey === `img-${r.id}`;
-
-  function handleSaved(updated: any) { setR(updated); onUpdated(updated); }
-
   return (
     <Card className="rounded-2xl bg-card/60 overflow-hidden">
       <button
@@ -153,20 +61,11 @@ function PosterCard({ r: initialR, authorName, canDelete, canEdit, onDelete, onU
         <Badge variant="outline" className="text-[10px] flex-shrink-0 hidden sm:inline-flex">
           {new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
         </Badge>
-        {canEdit && (
-          <span
-            role="button"
-            onClick={e => { e.stopPropagation(); setEditOpen(true); }}
-            className="ml-1 rounded-full p-1 hover:bg-primary/20 text-muted-foreground hover:text-primary transition"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </span>
-        )}
         {canDelete && (
           <span
             role="button"
             onClick={e => { e.stopPropagation(); onDelete(); }}
-            className="rounded-full p-1 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition"
+            className="ml-1 rounded-full p-1 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </span>
@@ -192,7 +91,6 @@ function PosterCard({ r: initialR, authorName, canDelete, canEdit, onDelete, onU
           {r.f3_message && <CopyChip label="F3 message" icon={Radio} text={r.f3_message} copyKey={`f3-${r.id}`} />}
         </div>
       )}
-      {canEdit && <EditPosterDialog r={r} open={editOpen} onOpenChange={setEditOpen} onSaved={handleSaved} />}
     </Card>
   );
 }
@@ -302,10 +200,6 @@ function PostersPage() {
     toast.success("Removed"); setRows(prev => prev.filter(r => r.id !== id));
   }
 
-  function handleUpdated(updated: any) {
-    setRows(prev => prev.map(r => r.id === updated.id ? updated : r));
-  }
-
   const q = search.trim().toLowerCase();
   const filtered = rows.filter(r => {
     if (!q) return true;
@@ -345,17 +239,7 @@ function PostersPage() {
         </Card>
       )}
       <div className="space-y-2">
-        {filtered.map(r => (
-          <PosterCard
-            key={r.id}
-            r={r}
-            authorName={profileMap[r.author_id] ?? "—"}
-            canDelete={isAuxPlus}
-            canEdit={isAuxPlus}
-            onDelete={() => deleteRow(r.id)}
-            onUpdated={handleUpdated}
-          />
-        ))}
+        {filtered.map(r => <PosterCard key={r.id} r={r} authorName={profileMap[r.author_id] ?? "—"} canDelete={isAuxPlus} onDelete={() => deleteRow(r.id)} />)}
       </div>
       <UploadPosterDialog open={uploadOpen} onOpenChange={setUploadOpen} onUploaded={() => { setUploadOpen(false); load(); }} />
     </div>
