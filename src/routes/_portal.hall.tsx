@@ -25,7 +25,7 @@ type Region = { x: number; y: number; w: number; h: number } | null;
 type FrameOption = { id: string; name: string; color?: string; thickness?: number; imageUrl: string | null; customDbId?: string; region?: Region; };
 
 function HallOfFame() {
-  const { user, isManager, isAdmPlus } = useAuth();
+  const { user, isManager } = useAuth();
   const [frame, setFrame] = useState<FrameOption>(BUILTIN_FRAMES[0]);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [winnerId, setWinnerId] = useState("");
@@ -85,10 +85,10 @@ function HallOfFame() {
           let minX = W, maxX = 0, minY = H, maxY = 0;
           let hasHole = false;
           if (frame.region) {
-            minX = frame.region.x * W;
-            minY = frame.region.y * H;
-            maxX = (frame.region.x + frame.region.w) * W;
-            maxY = (frame.region.y + frame.region.h) * H;
+            minX = Math.round(frame.region.x * W);
+            minY = Math.round(frame.region.y * H);
+            maxX = Math.round((frame.region.x + frame.region.w) * W) - 1;
+            maxY = Math.round((frame.region.y + frame.region.h) * H) - 1;
             hasHole = maxX > minX && maxY > minY;
           } else {
             const tmpCanvas = document.createElement("canvas");
@@ -105,7 +105,7 @@ function HallOfFame() {
             hasHole = maxX > minX && maxY > minY;
           }
           ctx.fillStyle = "#0a0a0a"; ctx.fillRect(0, 0, W, H);
-          if (hasHole) { ctx.drawImage(img, minX, minY, maxX - minX, maxY - minY); }
+          if (hasHole) { const holeW = maxX - minX + 1; const holeH = maxY - minY + 1; ctx.drawImage(img, minX, minY, holeW, holeH); }
           else { ctx.drawImage(img, 0, 0, W, H); }
           ctx.drawImage(frameImg, 0, 0, W, H);
         };
@@ -198,7 +198,7 @@ function HallOfFame() {
                       <div className="aspect-square rounded grid place-items-center text-[10px]" style={{ background: "rgba(255,255,255,0.04)", borderColor: f.color, borderWidth: 4, borderStyle: "solid" }}>{f.name}</div>
                     )}
                   </button>
-                  {isAdmPlus && f.customDbId && (
+                  {isManager && f.customDbId && (
                     <button onClick={() => deleteCustomFrame(f)} className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground p-0.5 opacity-0 group-hover:opacity-100 transition"><Trash2 className="h-2.5 w-2.5" /></button>
                   )}
                 </div>
@@ -221,7 +221,7 @@ function HallOfFame() {
           {items.map((it) => (
             <Card key={it.id} className="rounded-xl bg-card/60 overflow-hidden relative group">
               <img src={it.image_url} alt={it.caption ?? "Winner"} className="w-full aspect-square object-cover" />
-              {isAdmPlus && (
+              {isManager && (
                 <button onClick={() => deleteWallItem(it.id)} className="absolute top-1.5 right-1.5 rounded-full bg-destructive text-destructive-foreground p-1 opacity-0 group-hover:opacity-100 transition shadow"><Trash2 className="h-3 w-3" /></button>
               )}
               {(it.winner_id || it.caption) && (
@@ -294,7 +294,7 @@ function FrameUploadDialog({ open, onOpenChange, onUploaded }: { open: boolean; 
               <Label className="text-xs text-muted-foreground">Drag on the preview to mark the photo area</Label>
               <div ref={boxRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}
                 className="mx-auto w-64 h-64 rounded-lg overflow-hidden border border-border bg-[repeating-conic-gradient(#222_0_25%,#1a1a1a_0_50%)] [background-size:16px_16px] relative cursor-crosshair touch-none select-none">
-                <img src={preview} alt="frame preview" className="w-full h-full object-fill pointer-events-none" />
+                <img src={preview} alt="frame preview" className="w-full h-full object-contain pointer-events-none" />
                 {region && region.w > 0 && region.h > 0 && (
                   <div className="absolute border-2 border-primary bg-primary/20 pointer-events-none"
                     style={{ left: `${region.x * 100}%`, top: `${region.y * 100}%`, width: `${region.w * 100}%`, height: `${region.h * 100}%` }} />
