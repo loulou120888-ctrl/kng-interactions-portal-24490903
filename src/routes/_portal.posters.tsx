@@ -5,11 +5,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DEPT_LABEL, DEPT_BG, DEPARTMENTS, type Department } from "@/lib/portal";
-import { Copy, Check, ImageIcon, FileText, Radio, Plus, Upload, X, Trash2 } from "lucide-react";
+import { Copy, Check, ImageIcon, FileText, Radio, Plus, Upload, X, Trash2, ChevronDown, ChevronRight, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_portal/posters")({ component: PostersPage });
@@ -32,7 +33,7 @@ function CopyChip({ label, icon: Icon, text, copyKey }: {
   const copied = copiedKey === copyKey;
   return (
     <button
-      onClick={() => copy(text, copyKey)}
+      onClick={(e) => { e.stopPropagation(); copy(text, copyKey); }}
       className={`group w-full text-left rounded-xl border transition-all duration-150 p-4 ${
         copied ? "border-green-500/40 bg-green-500/10" : "border-border bg-background/40 hover:border-primary/40 hover:bg-primary/5"
       }`}
@@ -53,12 +54,21 @@ function CopyChip({ label, icon: Icon, text, copyKey }: {
 function PosterCard({ r, authorName, canDelete, onDelete }: { r: any; authorName: string; canDelete: boolean; onDelete: () => void }) {
   const { copiedKey, copy } = useCopy();
   const imgCopied = copiedKey === `img-${r.id}`;
+  const [expanded, setExpanded] = useState(false);
+
   const hasPoster = !!(r.poster_message || r.poster_image_url || r.f3_message);
   if (!hasPoster) return null;
 
   return (
     <Card className="rounded-2xl bg-card/60 overflow-hidden">
-      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border/60">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center gap-3 px-5 py-3.5 border-b border-border/60 hover:bg-white/[0.02] transition text-left"
+      >
+        {expanded
+          ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+          : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+        }
         <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${DEPT_BG[r.department as Department]}`} />
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{r.title}</p>
@@ -66,46 +76,53 @@ function PosterCard({ r, authorName, canDelete, onDelete }: { r: any; authorName
             {DEPT_LABEL[r.department as Department]} · {authorName}
           </p>
         </div>
-        <Badge variant="outline" className="text-[10px] flex-shrink-0">
-          {new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-        </Badge>
-        {canDelete && (
-          <button onClick={onDelete} className="ml-1 rounded-full p-1 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition">
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Badge variant="outline" className="text-[10px]">
+            {new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+          </Badge>
+          {canDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="rounded-full p-1 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </button>
 
-      <div className="p-4 space-y-3">
-        {r.poster_message && (
-          <CopyChip label="Poster message" icon={FileText} text={r.poster_message} copyKey={`msg-${r.id}`} />
-        )}
-        {r.poster_image_url && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Poster image</span>
+      {expanded && (
+        <div className="p-4 space-y-3">
+          {r.poster_message && (
+            <CopyChip label="Poster message" icon={FileText} text={r.poster_message} copyKey={`msg-${r.id}`} />
+          )}
+          {r.poster_image_url && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Poster image</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <a href={r.poster_image_url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+                  <img src={r.poster_image_url} alt="poster" className="h-32 w-32 rounded-lg object-cover border border-border hover:opacity-80 transition" />
+                </a>
+                <button
+                  onClick={() => copy(r.poster_image_url, `img-${r.id}`)}
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs transition ${
+                    imgCopied ? "border-green-500/40 bg-green-500/10 text-green-400" : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  {imgCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  {imgCopied ? "Copied URL" : "Copy URL"}
+                </button>
+              </div>
             </div>
-            <div className="flex items-start gap-3">
-              <a href={r.poster_image_url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                <img src={r.poster_image_url} alt="poster" className="h-32 w-32 rounded-lg object-cover border border-border hover:opacity-80 transition" />
-              </a>
-              <button
-                onClick={() => copy(r.poster_image_url, `img-${r.id}`)}
-                className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs transition ${
-                  imgCopied ? "border-green-500/40 bg-green-500/10 text-green-400" : "border-border hover:border-primary/40"
-                }`}
-              >
-                {imgCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                {imgCopied ? "Copied URL" : "Copy URL"}
-              </button>
-            </div>
-          </div>
-        )}
-        {r.f3_message && (
-          <CopyChip label="F3 message" icon={Radio} text={r.f3_message} copyKey={`f3-${r.id}`} />
-        )}
-      </div>
+          )}
+          {r.f3_message && (
+            <CopyChip label="F3 message" icon={Radio} text={r.f3_message} copyKey={`f3-${r.id}`} />
+          )}
+        </div>
+      )}
     </Card>
   );
 }
@@ -244,14 +261,16 @@ function PostersPage() {
   const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
   async function load() {
+    setLoading(true);
     const { data } = await supabase
       .from("interactions")
       .select("*")
       .or("poster_message.not.is.null,poster_image_url.not.is.null,f3_message.not.is.null")
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(200);
 
     const items = data ?? [];
     setRows(items);
@@ -264,24 +283,7 @@ function PostersPage() {
     }
   }
 
-  useEffect(() => {
-    load();
-    const ch = supabase
-      .channel("posters-feed")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "interactions" }, async (payload) => {
-        const r = payload.new as any;
-        if (!r.poster_message && !r.poster_image_url && !r.f3_message) return;
-        setProfiles((prev) => {
-          if (prev[r.author_id]) return prev;
-          supabase.from("profiles").select("id, display_name").eq("id", r.author_id).single()
-            .then(({ data }) => { if (data) setProfiles((p) => ({ ...p, [data.id]: data.display_name })); });
-          return prev;
-        });
-        setRows((prev) => [r, ...prev]);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, []);
+  useEffect(() => { load(); }, []);
 
   async function deleteRow(id: string) {
     const { error } = await supabase.from("interactions").delete().eq("id", id);
@@ -289,7 +291,15 @@ function PostersPage() {
     else { toast.success("Removed"); setRows(prev => prev.filter(r => r.id !== id)); }
   }
 
+  const q = search.trim().toLowerCase();
   const withPoster = rows.filter(r => r.poster_message || r.poster_image_url || r.f3_message);
+  const filtered = q
+    ? withPoster.filter(r =>
+        r.title?.toLowerCase().includes(q) ||
+        DEPT_LABEL[r.department as Department]?.toLowerCase().includes(q) ||
+        r.poster_message?.toLowerCase().includes(q)
+      )
+    : withPoster;
 
   return (
     <div className="space-y-6">
@@ -297,7 +307,7 @@ function PostersPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Posters & Promos</h1>
           <p className="text-sm text-muted-foreground">
-            Advertising content ready to copy. Click any section to copy instantly.
+            Advertising content ready to copy. Click any entry to expand it.
           </p>
         </div>
         {isAuxPlus && (
@@ -307,31 +317,49 @@ function PostersPage() {
         )}
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          className="pl-9"
+          placeholder="Search by event name, department or message…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
       {loading && (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => <Card key={i} className="rounded-2xl bg-card/60 h-48 animate-pulse" />)}
+          {[1, 2, 3].map((i) => <Card key={i} className="rounded-2xl bg-card/60 h-14 animate-pulse" />)}
         </div>
       )}
 
-      {!loading && withPoster.length === 0 && (
+      {!loading && filtered.length === 0 && (
         <Card className="rounded-2xl bg-card/60 p-10 text-center">
           <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm text-muted-foreground">No poster content yet.</p>
-          {isAuxPlus && <p className="text-xs text-muted-foreground mt-1">Click "Upload pack" to add the first one.</p>}
+          <p className="text-sm text-muted-foreground">
+            {q ? "No results match your search." : "No poster content yet."}
+          </p>
+          {!q && isAuxPlus && <p className="text-xs text-muted-foreground mt-1">Click "Upload pack" to add the first one.</p>}
         </Card>
       )}
 
-      <div className="space-y-4">
-        {withPoster.map((r) => (
+      <div className="space-y-2">
+        {filtered.map((r) => (
           <PosterCard
             key={r.id}
             r={r}
             authorName={profiles[r.author_id] ?? "—"}
-            canDelete={isAuxPlus && (r.author_id === user?.id || isAuxPlus)}
+            canDelete={isAuxPlus}
             onDelete={() => deleteRow(r.id)}
           />
         ))}
       </div>
+
+      {!loading && filtered.length > 0 && (
+        <p className="text-xs text-muted-foreground text-center">
+          {filtered.length} pack{filtered.length !== 1 ? "s" : ""}{q ? " found" : " total"}
+        </p>
+      )}
 
       <UploadPosterDialog
         open={uploadOpen}

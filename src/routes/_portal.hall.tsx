@@ -10,8 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { Image as ImageIcon, Copy, Save, Upload, Plus, Trash2, FrameIcon } from "lucide-react";
 
-export const Route = createFileRoute("/_portal/hall")({  component: HallOfFame,
-});
+export const Route = createFileRoute("/_portal/hall")({ component: HallOfFame });
 
 const BUILTIN_FRAMES = [
   { id: "gold", name: "Gold", color: "oklch(0.78 0.16 75)", thickness: 28, imageUrl: null },
@@ -21,6 +20,15 @@ const BUILTIN_FRAMES = [
   { id: "neon", name: "Neon", color: "oklch(0.85 0.2 145)", thickness: 22, imageUrl: null },
   { id: "obsidian", name: "Obsidian", color: "oklch(0.3 0.01 260)", thickness: 36, imageUrl: null },
 ];
+
+const HIDDEN_KEY = "kng_hidden_builtin_frames";
+
+function getHiddenBuiltins(): string[] {
+  try { return JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? "[]"); } catch { return []; }
+}
+function saveHiddenBuiltins(ids: string[]) {
+  localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids));
+}
 
 type Region = { x: number; y: number; w: number; h: number } | null;
 
@@ -36,6 +44,7 @@ type FrameOption = {
 
 function HallOfFame() {
   const { user, isManager } = useAuth();
+  const [hiddenBuiltins, setHiddenBuiltins] = useState<string[]>(() => getHiddenBuiltins());
   const [frame, setFrame] = useState<FrameOption>(BUILTIN_FRAMES[0]);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [winnerId, setWinnerId] = useState("");
@@ -45,6 +54,8 @@ function HallOfFame() {
   const [items, setItems] = useState<any[]>([]);
   const [customFrames, setCustomFrames] = useState<FrameOption[]>([]);
   const [frameUploadOpen, setFrameUploadOpen] = useState(false);
+
+  const visibleBuiltins = BUILTIN_FRAMES.filter((f) => !hiddenBuiltins.includes(f.id));
 
   async function loadFrames() {
     const { data } = await supabase.from("hall_of_fame_frames").select("*").order("created_at", { ascending: false });
@@ -91,7 +102,6 @@ function HallOfFame() {
     img.crossOrigin = "anonymous";
     img.onload = () => {
       if (frame.imageUrl) {
-        // Custom frame: detect transparent hole, fit photo into it exactly
         const frameImg = new Image();
         frameImg.crossOrigin = "anonymous";
         frameImg.onload = () => {
@@ -105,7 +115,6 @@ function HallOfFame() {
             maxY = Math.round((frame.region.y + frame.region.h) * H) - 1;
             hasHole = maxX > minX && maxY > minY;
           } else {
-            // Fallback: detect transparent hole via alpha
             const tmpCanvas = document.createElement("canvas");
             tmpCanvas.width = W; tmpCanvas.height = H;
             const tmpCtx = tmpCanvas.getContext("2d")!;
@@ -126,7 +135,6 @@ function HallOfFame() {
           }
 
           ctx.fillStyle = "#0a0a0a"; ctx.fillRect(0, 0, W, H);
-
           if (hasHole) {
             const holeW = maxX - minX + 1;
             const holeH = maxY - minY + 1;
@@ -134,12 +142,10 @@ function HallOfFame() {
           } else {
             ctx.drawImage(img, 0, 0, W, H);
           }
-
           ctx.drawImage(frameImg, 0, 0, W, H);
         };
         frameImg.src = frame.imageUrl;
       } else {
-        // Built-in frame: draw photo with border inset, stretched to fill
         const t = frame.thickness ?? 28;
         const innerW = W - t * 2, innerH = H - t * 2;
         ctx.drawImage(img, t, t, innerW, innerH);
@@ -188,11 +194,29 @@ function HallOfFame() {
     });
   }
 
-  async function deleteCustomFrame(frame: FrameOption) {
-    if (!frame.customDbId) return;
-    const { error } = await supabase.from("hall_of_fame_frames").delete().eq("id", frame.customDbId);
+  function deleteBuiltinFrame(frameId: string) {
+    const next = [...hiddenBuiltins, frameId];
+    setHiddenBuiltins(next);
+    saveHiddenBuiltins(next);
+    if (frame.id === frameId) {
+      const remaining = BUILTIN_FRAMES.filter((f) => !next.includes(f.id));
+      if (remaining.length) setFrame(remaining[0]);
+      else if (customFrames.length) setFrame(customFrames[0]);
+    }
+    toast.success("Frame removed");
+  }
+
+  async function deleteCustomFrame(f: FrameOption) {
+    if (!f.customDbId) return;
+    const { error } = await supabase.from("hall_of_fame_frames").delete().eq("id", f.customDbId);
     if (error) toast.error(error.message);
-    else { toast.success("Frame deleted"); loadFrames(); }
+    else {
+      toast.success("Frame deleted");
+      if (frame.id === f.id) {
+        if (visibleBuiltins.length) setFrame(visibleBuiltins[0]);
+      }
+      loadFrames();
+    }
   }
 
   async function deleteWallItem(id: string) {
@@ -204,7 +228,7 @@ function HallOfFame() {
     }
   }
 
-  const allFrames: FrameOption[] = [...BUILTIN_FRAMES, ...customFrames];
+  const allFrames: FrameOption[] = [...visibleBuiltins, ...customFrames];
 
   return (
     <div className="space-y-6">
@@ -237,6 +261,9 @@ function HallOfFame() {
         <Card className="rounded-2xl bg-card/60 p-5 space-y-4">
           <div>
             <Label className="mb-2 block">Frame</Label>
+            {allFrames.length === 0 && (
+              <p className="text-xs text-muted-foreground">All frames removed. Upload a custom one to continue.</p>
+            )}
             <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
               {allFrames.map((f) => (
                 <div key={f.id} className="relative group">
@@ -254,9 +281,12 @@ function HallOfFame() {
                       </div>
                     )}
                   </button>
-                  {isManager && f.customDbId && (
-                    <button onClick={() => deleteCustomFrame(f)}
-                      className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground p-0.5 opacity-0 group-hover:opacity-100 transition">
+                  {isManager && (
+                    <button
+                      onClick={() => f.customDbId ? deleteCustomFrame(f) : deleteBuiltinFrame(f.id)}
+                      className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground p-0.5 opacity-0 group-hover:opacity-100 transition"
+                      title="Remove frame"
+                    >
                       <Trash2 className="h-2.5 w-2.5" />
                     </button>
                   )}
@@ -326,7 +356,6 @@ function FrameUploadDialog({ open, onOpenChange, userId, onUploaded }: {
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
-  // region in 0..1 fractions
   const [region, setRegion] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
 

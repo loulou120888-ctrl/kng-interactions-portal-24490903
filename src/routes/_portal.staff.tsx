@@ -10,11 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ALL_ROLES, ROLE_LABEL, DEPARTMENTS, DEPT_LABEL, ROLE_RANK, type Department, type Role } from "@/lib/portal";
+import { ALL_ROLES, ROLE_LABEL, ROLE_RANK, DEPARTMENTS, DEPT_LABEL, type Department, type Role } from "@/lib/portal";
 import { UserCog, Pencil, UserX, UserCheck } from "lucide-react";
 
-export const Route = createFileRoute("/_portal/staff")({  component: StaffPage,
-});
+export const Route = createFileRoute("/_portal/staff")({ component: StaffPage });
 
 interface Staff {
   id: string;
@@ -32,6 +31,9 @@ function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [edit, setEdit] = useState<Staff | null>(null);
   const [showDeactivated, setShowDeactivated] = useState(false);
+  const [filterDept, setFilterDept] = useState<Department | "all">("all");
+  const [filterRole, setFilterRole] = useState<Role | "all">("all");
+  const [search, setSearch] = useState("");
 
   async function load() {
     const [{ data: profiles }, { data: roles }] = await Promise.all([
@@ -52,13 +54,26 @@ function StaffPage() {
   }
   useEffect(() => { load(); }, []);
 
-  const visible = showDeactivated ? staff : staff.filter((s) => !s.deactivated);
+  const actorRank = ROLE_RANK[topRole];
+
+  const visible = staff
+    .filter((s) => showDeactivated || !s.deactivated)
+    .filter((s) => filterDept === "all" || s.department === filterDept)
+    .filter((s) => filterRole === "all" || s.roles.includes(filterRole))
+    .filter((s) => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
+        s.display_name.toLowerCase().includes(q) ||
+        (s.username ?? "").toLowerCase().includes(q)
+      );
+    });
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Posters &amp; Staff</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Staff List</h1>
           <p className="text-sm text-muted-foreground">
             {isAuxPlus ? "Promote, demote, rename or deactivate staff." : "Browse staff directory."}
           </p>
@@ -73,9 +88,49 @@ function StaffPage() {
           </Button>
         )}
       </div>
+
+      <div className="flex flex-wrap gap-2 items-center">
+        <Input
+          className="h-9 w-48"
+          placeholder="Search name or username…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Select value={filterDept} onValueChange={(v) => setFilterDept(v as Department | "all")}>
+          <SelectTrigger className="h-9 w-44">
+            <SelectValue placeholder="All teams" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All teams</SelectItem>
+            {DEPARTMENTS.map((d) => (
+              <SelectItem key={d} value={d}>{DEPT_LABEL[d]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterRole} onValueChange={(v) => setFilterRole(v as Role | "all")}>
+          <SelectTrigger className="h-9 w-40">
+            <SelectValue placeholder="All roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All roles</SelectItem>
+            {ALL_ROLES.map((r) => (
+              <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(filterDept !== "all" || filterRole !== "all" || search) && (
+          <Button variant="ghost" size="sm" className="h-9 text-muted-foreground" onClick={() => { setFilterDept("all"); setFilterRole("all"); setSearch(""); }}>
+            Clear
+          </Button>
+        )}
+        <span className="text-xs text-muted-foreground ml-1">{visible.length} shown</span>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {visible.map((s) => {
           const top = s.roles.slice().sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0];
+          const targetRank = ROLE_RANK[top];
+          const canEdit = isAuxPlus && s.id !== user?.id && actorRank > targetRank;
           return (
             <Card
               key={s.id}
@@ -95,7 +150,7 @@ function StaffPage() {
                     {s.deactivated && <Badge variant="destructive">Deactivated</Badge>}
                   </div>
                 </div>
-                {isAuxPlus && s.id !== user?.id && (
+                {canEdit && (
                   <Button size="icon" variant="ghost" onClick={() => setEdit(s)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
@@ -104,6 +159,9 @@ function StaffPage() {
             </Card>
           );
         })}
+        {visible.length === 0 && (
+          <p className="text-sm text-muted-foreground col-span-full py-6 text-center">No staff match these filters.</p>
+        )}
       </div>
 
       {edit && (
@@ -130,7 +188,8 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
   const [role, setRole] = useState<Role>(top);
   const [busy, setBusy] = useState(false);
 
-  const allowedRoles = ALL_ROLES.filter((r) => canManager || r !== "manager");
+  const actorRank = ROLE_RANK[actorTopRole];
+  const allowedRoles = ALL_ROLES.filter((r) => ROLE_RANK[r] < actorRank);
 
   async function save() {
     setBusy(true);
@@ -152,7 +211,6 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
 
   async function toggleDeactivated() {
     const next = !staff.deactivated;
-    const action = next ? "deactivate" : "reactivate";
     if (!confirm(`${next ? "Deactivate" : "Reactivate"} ${staff.display_name}? ${next ? "They will be immediately signed out and unable to log back in." : "They will be able to sign in again."}`)) return;
     setBusy(true);
     const { error } = await supabase

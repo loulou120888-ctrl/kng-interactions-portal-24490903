@@ -51,6 +51,12 @@ export function ScheduleView({
   const [openSlot, setOpenSlot] = useState<string | null>(null);
   const [logSlot, setLogSlot] = useState<Slot | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const slotTimes = useMemo(() => buildDaySlots(date), [date]);
   const dayStart = slotTimes[0];
@@ -120,17 +126,31 @@ export function ScheduleView({
             const isMyClain = slot?.claimed_by === user?.id;
             const canManage = isMine || isAuxPlus;
             const canLog = isMyClain || isMine || isAuxPlus;
+            const slotDate = new Date(iso);
+            const isCurrentSlot = now >= slotDate && now < new Date(slotDate.getTime() + 30 * 60 * 1000);
             return (
               <Dialog key={iso} open={openSlot === iso} onOpenChange={(o) => setOpenSlot(o ? iso : null)}>
                 <DialogTrigger asChild>
                   <button
                     className={`relative text-left rounded-xl border p-3 transition hover:border-primary/50 ${
-                      slot ? `${DEPT_BORDER[slot.department]} bg-card` : "border-border bg-background/40"
+                      isCurrentSlot
+                        ? "border-primary bg-primary/10 shadow-[0_0_0_1px_oklch(0.7_0.2_280_/_0.4)]"
+                        : slot
+                          ? `${DEPT_BORDER[slot.department]} bg-card`
+                          : "border-border bg-background/40"
                     }`}
                   >
+                    {isCurrentSlot && (
+                      <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                      </span>
+                    )}
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-mono text-muted-foreground">{fmtSlot(iso)}</span>
-                      {slot && <span className={`h-2 w-2 rounded-full ${DEPT_BG[slot.department]}`} />}
+                      <span className={`font-mono ${isCurrentSlot ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                        {fmtSlot(iso)}
+                      </span>
+                      {slot && !isCurrentSlot && <span className={`h-2 w-2 rounded-full ${DEPT_BG[slot.department]}`} />}
                     </div>
                     {slot ? (
                       <div className="mt-2">
