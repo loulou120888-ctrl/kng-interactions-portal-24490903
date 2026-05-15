@@ -185,21 +185,21 @@ function HallOfFame() {
         <Card className="rounded-2xl bg-card/60 p-5 space-y-4">
           <div>
             <Label className="mb-2 block">Frame</Label>
-            <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
               {allFrames.map((f) => (
-                <div key={f.id} className="relative group">
+                <div key={f.id} className="relative flex-shrink-0 w-20">
                   <button onClick={() => setFrame(f)} className={`w-full rounded-lg border-2 p-1 transition ${frame.id === f.id ? "border-primary" : "border-border"}`}>
                     {f.imageUrl ? (
                       <div className="aspect-square rounded overflow-hidden relative">
-                        <img src={f.imageUrl} alt={f.name} className="w-full h-full object-cover" />
+                        <img src={f.imageUrl} alt={f.name} className="w-full h-full object-contain" />
                         <span className="absolute bottom-0 left-0 right-0 text-center text-[9px] bg-background/70 py-0.5 truncate px-1">{f.name}</span>
                       </div>
                     ) : (
-                      <div className="aspect-square rounded grid place-items-center text-[10px]" style={{ background: "rgba(255,255,255,0.04)", borderColor: f.color, borderWidth: 4, borderStyle: "solid" }}>{f.name}</div>
+                      <div className="aspect-square rounded grid place-items-center text-[10px] font-medium" style={{ background: "rgba(255,255,255,0.04)", borderColor: f.color, borderWidth: 4, borderStyle: "solid" }}>{f.name}</div>
                     )}
                   </button>
                   {isAdmPlus && f.customDbId && (
-                    <button onClick={() => deleteCustomFrame(f)} className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground p-0.5 opacity-0 group-hover:opacity-100 transition"><Trash2 className="h-2.5 w-2.5" /></button>
+                    <button onClick={() => deleteCustomFrame(f)} className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground p-0.5 transition hover:scale-110"><Trash2 className="h-2.5 w-2.5" /></button>
                   )}
                 </div>
               ))}

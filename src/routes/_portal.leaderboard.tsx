@@ -8,6 +8,7 @@ import { Trophy, CheckCircle2, XCircle, Calendar, Users, Star } from "lucide-rea
 export const Route = createFileRoute("/_portal/leaderboard")({ component: Leaderboard });
 
 const DAILY_MIN = 5;
+type Period = "daily" | "weekly" | "monthly";
 
 function medalClass(i: number) {
   if (i === 0) return "bg-[oklch(0.78_0.16_75)] text-background";
@@ -16,11 +17,18 @@ function medalClass(i: number) {
   return "bg-muted text-muted-foreground";
 }
 
+const PERIOD_LABELS: Record<Period, string> = {
+  daily: "Today",
+  weekly: "This Week",
+  monthly: "This Month",
+};
+
 function Leaderboard() {
   const [pts, setPts] = useState<{ user_id: string; amount: number; awarded_at: string }[]>([]);
   const [profileMap, setProfileMap] = useState<Record<string, string>>({});
   const [slots, setSlots] = useState<{ status: string; slot_start: string }[]>([]);
   const [attendanceToday, setAttendanceToday] = useState<Record<string, number>>({});
+  const [period, setPeriod] = useState<Period>("weekly");
 
   const todayStart = useMemo(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString();
@@ -70,8 +78,12 @@ function Leaderboard() {
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }
 
+  const daily = useMemo(() => Object.entries(attendanceToday).sort((a, b) => b[1] - a[1]), [attendanceToday]);
   const weekly = useMemo(() => aggregate(7 * 86400_000), [pts]);
   const monthly = useMemo(() => aggregate(30 * 86400_000), [pts]);
+
+  const leaderboard = period === "daily" ? daily : period === "weekly" ? weekly : monthly;
+
   const missedSlots = useMemo(() => slots.filter(s => s.status !== "completed").length, [slots]);
   const totalSlots = slots.length;
   const completedSlots = slots.filter(s => s.status === "completed").length;
@@ -111,34 +123,37 @@ function Leaderboard() {
           <p className="text-xs text-muted-foreground mt-1">of {dailyMinMembers.length} staff · min {DAILY_MIN} pts</p>
         </Card>
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="rounded-2xl bg-card/60 p-5">
-          <div className="flex items-center gap-2 mb-4"><Trophy className="h-4 w-4 text-[oklch(0.78_0.16_75)]" /><h2 className="text-sm font-semibold tracking-wide">Top members — this week</h2></div>
-          <div className="divide-y divide-border">
-            {weekly.length === 0 && <p className="py-4 text-sm text-muted-foreground text-center">No points yet this week.</p>}
-            {weekly.slice(0, 10).map(([uid, n], i) => (
-              <div key={uid} className="flex items-center gap-3 py-2.5">
-                <span className={`grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[11px] font-bold ${medalClass(i)}`}>{i + 1}</span>
-                <span className="flex-1 text-sm truncate">{profileMap[uid] ?? "—"}</span>
-                <span className="text-sm font-mono tabular-nums">{n} <span className="text-muted-foreground text-xs">pts</span></span>
-              </div>
+
+      <Card className="rounded-2xl bg-card/60 p-5">
+        <div className="flex items-center gap-3 mb-5 flex-wrap">
+          <Trophy className="h-4 w-4 text-[oklch(0.78_0.16_75)]" />
+          <h2 className="text-sm font-semibold tracking-wide flex-1">Top members</h2>
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            {(["daily", "weekly", "monthly"] as Period[]).map(p => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-3 py-1.5 text-xs font-medium transition ${period === p ? "bg-primary text-primary-foreground" : "hover:bg-muted/50 text-muted-foreground"}`}
+              >
+                {PERIOD_LABELS[p]}
+              </button>
             ))}
           </div>
-        </Card>
-        <Card className="rounded-2xl bg-card/60 p-5">
-          <div className="flex items-center gap-2 mb-4"><Trophy className="h-4 w-4 text-[oklch(0.7_0.02_260)]" /><h2 className="text-sm font-semibold tracking-wide">Top members — this month</h2></div>
-          <div className="divide-y divide-border">
-            {monthly.length === 0 && <p className="py-4 text-sm text-muted-foreground text-center">No points yet this month.</p>}
-            {monthly.slice(0, 10).map(([uid, n], i) => (
-              <div key={uid} className="flex items-center gap-3 py-2.5">
-                <span className={`grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[11px] font-bold ${medalClass(i)}`}>{i + 1}</span>
-                <span className="flex-1 text-sm truncate">{profileMap[uid] ?? "—"}</span>
-                <span className="text-sm font-mono tabular-nums">{n} <span className="text-muted-foreground text-xs">pts</span></span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+        </div>
+        <div className="divide-y divide-border">
+          {leaderboard.length === 0 && (
+            <p className="py-4 text-sm text-muted-foreground text-center">No points logged {period === "daily" ? "today" : period === "weekly" ? "this week" : "this month"}.</p>
+          )}
+          {leaderboard.slice(0, 10).map(([uid, n], i) => (
+            <div key={uid} className="flex items-center gap-3 py-2.5">
+              <span className={`grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[11px] font-bold ${medalClass(i)}`}>{i + 1}</span>
+              <span className="flex-1 text-sm truncate">{profileMap[uid] ?? "—"}</span>
+              <span className="text-sm font-mono tabular-nums">{n} <span className="text-muted-foreground text-xs">pts</span></span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       <Card className="rounded-2xl bg-card/60 p-5">
         <div className="flex items-center gap-2 mb-4"><Users className="h-4 w-4 text-muted-foreground" /><h2 className="text-sm font-semibold tracking-wide">Daily minimum tracker — today</h2><Badge variant="outline" className="ml-auto text-[10px]">Min {DAILY_MIN} pts</Badge></div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

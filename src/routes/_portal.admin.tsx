@@ -11,12 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Copy, Trash2 } from "lucide-react";
-import { ALL_ROLES, ROLE_LABEL, DEPARTMENTS, DEPT_LABEL, type Role, type Department } from "@/lib/portal";
+import { ALL_ROLES, ROLE_LABEL, ROLE_RANK, DEPARTMENTS, DEPT_LABEL, type Role, type Department } from "@/lib/portal";
 
 export const Route = createFileRoute("/_portal/admin")({ component: Admin });
 
 function Admin() {
-  const { user, isAuxPlus, isManager } = useAuth();
+  const { user, isAuxPlus, isManager, topRole } = useAuth();
   if (!isAuxPlus) return <p className="text-sm text-muted-foreground">AUX+ only.</p>;
   return (
     <div className="space-y-6">
@@ -29,16 +29,18 @@ function Admin() {
           <TabsTrigger value="codes">Signup Codes</TabsTrigger>
           <TabsTrigger value="prizes">Prizes</TabsTrigger>
         </TabsList>
-        <TabsContent value="codes"><Codes canManager={isManager} userId={user!.id} /></TabsContent>
+        <TabsContent value="codes"><Codes canManager={isManager} userId={user!.id} actorTopRole={topRole} /></TabsContent>
         <TabsContent value="prizes"><Prizes /></TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function Codes({ canManager, userId }: { canManager: boolean; userId: string }) {
+function Codes({ canManager, userId, actorTopRole }: { canManager: boolean; userId: string; actorTopRole: Role }) {
   const [codes, setCodes] = useState<any[]>([]);
-  const [role, setRole] = useState<Role>("member");
+  const actorRank = ROLE_RANK[actorTopRole];
+  const allowedRoles = ALL_ROLES.filter(r => ROLE_RANK[r] < actorRank);
+  const [role, setRole] = useState<Role>(allowedRoles[0] ?? "member");
   const [dept, setDept] = useState<Department | "">("");
 
   async function load() {
@@ -50,6 +52,7 @@ function Codes({ canManager, userId }: { canManager: boolean; userId: string }) 
   function genCode() { return "KNG-" + Math.random().toString(36).slice(2, 8).toUpperCase(); }
 
   async function generate() {
+    if (!allowedRoles.includes(role)) { toast.error("You cannot generate codes for that role."); return; }
     const code = genCode();
     await api.signupCodes.create({ code, role, department: dept || null }).catch((e: any) => { toast.error(e.message); return null; });
     toast.success("Code created"); load();
@@ -59,8 +62,6 @@ function Codes({ canManager, userId }: { canManager: boolean; userId: string }) 
     await api.signupCodes.revoke(id).catch((e: any) => { toast.error(e.message); return null; });
     load();
   }
-
-  const allowedRoles = ALL_ROLES.filter(r => canManager || r !== "manager");
 
   return (
     <Card className="rounded-2xl bg-card/60 p-5 space-y-4">
@@ -99,6 +100,7 @@ function Codes({ canManager, userId }: { canManager: boolean; userId: string }) 
             </div>
           </div>
         ))}
+        {codes.length === 0 && <p className="py-4 text-sm text-muted-foreground">No codes yet.</p>}
       </div>
     </Card>
   );
