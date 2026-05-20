@@ -15,6 +15,7 @@ import { Route as SetupRouteImport } from './routes/setup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PortalRouteImport } from './routes/_portal'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PortalStatsRouteImport } from './routes/_portal.stats'
 import { Route as PortalStaffRouteImport } from './routes/_portal.staff'
 import { Route as PortalSearchRouteImport } from './routes/_portal.search'
 import { Route as PortalPostersRouteImport } from './routes/_portal.posters'
@@ -58,6 +59,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PortalStatsRoute = PortalStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => PortalRoute,
 } as any)
 const PortalStaffRoute = PortalStaffRouteImport.update({
   id: '/staff',
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/posters': typeof PortalPostersRoute
   '/search': typeof PortalSearchRoute
   '/staff': typeof PortalStaffRouteWithChildren
+  '/stats': typeof PortalStatsRoute
   '/schedule/entertainment': typeof PortalScheduleEntertainmentRoute
   '/schedule/events': typeof PortalScheduleEventsRoute
   '/staff/$id': typeof PortalStaffIdRoute
@@ -169,6 +176,7 @@ export interface FileRoutesByTo {
   '/posters': typeof PortalPostersRoute
   '/search': typeof PortalSearchRoute
   '/staff': typeof PortalStaffRouteWithChildren
+  '/stats': typeof PortalStatsRoute
   '/schedule/entertainment': typeof PortalScheduleEntertainmentRoute
   '/schedule/events': typeof PortalScheduleEventsRoute
   '/staff/$id': typeof PortalStaffIdRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/_portal/posters': typeof PortalPostersRoute
   '/_portal/search': typeof PortalSearchRoute
   '/_portal/staff': typeof PortalStaffRouteWithChildren
+  '/_portal/stats': typeof PortalStatsRoute
   '/_portal/schedule/entertainment': typeof PortalScheduleEntertainmentRoute
   '/_portal/schedule/events': typeof PortalScheduleEventsRoute
   '/_portal/staff/$id': typeof PortalStaffIdRoute
@@ -215,6 +224,7 @@ export interface FileRouteTypes {
     | '/posters'
     | '/search'
     | '/staff'
+    | '/stats'
     | '/schedule/entertainment'
     | '/schedule/events'
     | '/staff/$id'
@@ -236,6 +246,7 @@ export interface FileRouteTypes {
     | '/posters'
     | '/search'
     | '/staff'
+    | '/stats'
     | '/schedule/entertainment'
     | '/schedule/events'
     | '/staff/$id'
@@ -258,6 +269,7 @@ export interface FileRouteTypes {
     | '/_portal/posters'
     | '/_portal/search'
     | '/_portal/staff'
+    | '/_portal/stats'
     | '/_portal/schedule/entertainment'
     | '/_portal/schedule/events'
     | '/_portal/staff/$id'
@@ -315,6 +327,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_portal/stats': {
+      id: '/_portal/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof PortalStatsRouteImport
+      parentRoute: typeof PortalRoute
     }
     '/_portal/staff': {
       id: '/_portal/staff'
@@ -441,6 +460,7 @@ interface PortalRouteChildren {
   PortalPostersRoute: typeof PortalPostersRoute
   PortalSearchRoute: typeof PortalSearchRoute
   PortalStaffRoute: typeof PortalStaffRouteWithChildren
+  PortalStatsRoute: typeof PortalStatsRoute
   PortalScheduleEntertainmentRoute: typeof PortalScheduleEntertainmentRoute
   PortalScheduleEventsRoute: typeof PortalScheduleEventsRoute
 }
@@ -457,6 +477,7 @@ const PortalRouteChildren: PortalRouteChildren = {
   PortalPostersRoute: PortalPostersRoute,
   PortalSearchRoute: PortalSearchRoute,
   PortalStaffRoute: PortalStaffRouteWithChildren,
+  PortalStatsRoute: PortalStatsRoute,
   PortalScheduleEntertainmentRoute: PortalScheduleEntertainmentRoute,
   PortalScheduleEventsRoute: PortalScheduleEventsRoute,
 }

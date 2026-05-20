@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Trophy, CheckCircle2, XCircle, Calendar, Users, Star, RotateCcw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { type Period, PERIODS, getPeriodRange } from "./_portal.stats";
 
 export const Route = createFileRoute("/_portal/leaderboard")({ component: Leaderboard });
 
@@ -44,7 +45,11 @@ function ResetDialog({ open, onOpenChange, onConfirmed, title, description, warn
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) setInput(""); onOpenChange(o); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" />{title}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />{title}
+          </DialogTitle>
+        </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">{description}</p>
           <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
@@ -78,10 +83,10 @@ function ResetDialog({ open, onOpenChange, onConfirmed, title, description, warn
 
 function Leaderboard() {
   const { isManager } = useAuth();
+  const [period, setPeriod] = useState<Period>("week");
   const [pts, setPts] = useState<{ user_id: string; amount: number; awarded_at: string }[]>([]);
   const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [slots, setSlots] = useState<{ status: string; slot_start: string }[]>([]);
-  const [attendanceToday, setAttendanceToday] = useState<Record<string, number>>({});
   const [resetPointsOpen, setResetPointsOpen] = useState(false);
   const [resetInteractionsOpen, setResetInteractionsOpen] = useState(false);
 
@@ -90,46 +95,65 @@ function Leaderboard() {
   }, []);
 
   async function fetchData() {
-    const since35 = new Date(Date.now() - 35 * 86400_000).toISOString();
+    // For "all" fetch everything; otherwise fetch enough to cover the period + today
+    let ptsQuery = supabase.from("points_log").select("user_id, amount, awarded_at");
+    if (period !== "all") {
+      const { from } = getPeriodRange(period);
+      // Include today regardless of period so the daily tracker always works
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const earliest = new Date(Math.min(from.getTime(), today.getTime()));
+      ptsQuery = ptsQuery.gte("awarded_at", earliest.toISOString());
+    }
 
-    const [{ data: ptsData }, { data: pf }, { data: slotsData }, { data: todayPts }] = await Promise.all([
-      supabase.from("points_log").select("user_id, amount, awarded_at").gte("awarded_at", since35),
+    const [{ data: ptsData }, { data: pf }, { data: slotsData }] = await Promise.all([
+      ptsQuery,
       supabase.from("profiles").select("id, display_name"),
-      supabase.from("schedule_slots").select("status, slot_start").gte("slot_start", new Date(Date.now() - 7 * 86400_000).toISOString()).lte("slot_start", new Date().toISOString()),
-      supabase.from("points_log").select("user_id, amount").gte("awarded_at", todayStart),
+      supabase.from("schedule_slots")
+        .select("status, slot_start")
+        .gte("slot_start", new Date(Date.now() - 7 * 86400_000).toISOString())
+        .lte("slot_start", new Date().toISOString()),
     ]);
 
     setPts((ptsData ?? []) as any);
     setProfiles(Object.fromEntries((pf ?? []).map((x: any) => [x.id, x.display_name])));
     setSlots((slotsData ?? []) as any);
-
-    const todayMap: Record<string, number> = {};
-    (todayPts ?? []).forEach((p: any) => {
-      todayMap[p.user_id] = (todayMap[p.user_id] ?? 0) + (p.amount ?? 0);
-    });
-    setAttendanceToday(todayMap);
   }
 
   useEffect(() => {
     fetchData();
-
     const ch = supabase.channel("points-lb")
       .on("postgres_changes", { event: "*", schema: "public", table: "points_log" }, fetchData)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [todayStart]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
 
-  function aggregate(sinceMs: number) {
-    const cutoff = Date.now() - sinceMs;
+  // Aggregate for the selected period
+  const periodRows = useMemo(() => {
+    const { from, to } = getPeriodRange(period);
+    const fromMs = from.getTime();
+    const toMs = to.getTime();
     const m: Record<string, number> = {};
     pts.forEach((p) => {
-      if (new Date(p.awarded_at).getTime() >= cutoff) m[p.user_id] = (m[p.user_id] ?? 0) + (p.amount ?? 0);
+      const t = new Date(p.awarded_at).getTime();
+      if (t >= fromMs && t <= toMs) {
+        m[p.user_id] = (m[p.user_id] ?? 0) + (p.amount ?? 0);
+      }
     });
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
-  }
+  }, [pts, period]);
 
-  const weekly = useMemo(() => aggregate(7 * 86400_000), [pts]);
-  const monthly = useMemo(() => aggregate(30 * 86400_000), [pts]);
+  // Today's attendance (always relative to today, regardless of selected period)
+  const attendanceToday = useMemo(() => {
+    const todayMs = new Date(todayStart).getTime();
+    const m: Record<string, number> = {};
+    pts.forEach((p) => {
+      if (new Date(p.awarded_at).getTime() >= todayMs) {
+        m[p.user_id] = (m[p.user_id] ?? 0) + (p.amount ?? 0);
+      }
+    });
+    return m;
+  }, [pts, todayStart]);
 
   const missedSlots = useMemo(() => slots.filter(s => s.status !== "completed").length, [slots]);
   const totalSlots = slots.length;
@@ -145,6 +169,8 @@ function Leaderboard() {
   }, [attendanceToday, profiles]);
 
   const hitMin = dailyMinMembers.filter(m => m.hit).length;
+
+  const currentPeriodLabel = PERIODS.find(p => p.id === period)?.label ?? "Selected period";
 
   async function resetPoints() {
     const { error } = await supabase.from("points_log").delete().gte("awarded_at", "2000-01-01");
@@ -162,11 +188,26 @@ function Leaderboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-          <Trophy className="h-6 w-6" /> Staff Dashboard
-        </h1>
-        <p className="text-sm text-muted-foreground">Live performance across the team.</p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+            <Trophy className="h-6 w-6" /> Staff Leaderboard
+          </h1>
+          <p className="text-sm text-muted-foreground">Live performance across the team.</p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {PERIODS.map((p) => (
+            <Button
+              key={p.id}
+              size="sm"
+              variant={period === p.id ? "default" : "outline"}
+              className="h-7 text-xs"
+              onClick={() => setPeriod(p.id)}
+            >
+              {p.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -203,41 +244,29 @@ function Leaderboard() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="rounded-2xl bg-card/60 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy className="h-4 w-4 text-[oklch(0.78_0.16_75)]" />
-            <h2 className="text-sm font-semibold tracking-wide">Top members — this week</h2>
-          </div>
-          <div className="divide-y divide-border">
-            {weekly.length === 0 && <p className="py-4 text-sm text-muted-foreground text-center">No points yet this week.</p>}
-            {weekly.slice(0, 10).map(([uid, n], i) => (
-              <div key={uid} className="flex items-center gap-3 py-2.5">
-                <span className={`grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[11px] font-bold ${medalClass(i)}`}>{i + 1}</span>
-                <span className="flex-1 text-sm truncate">{profiles[uid] ?? "—"}</span>
-                <span className="text-sm font-mono tabular-nums">{n} <span className="text-muted-foreground text-xs">pts</span></span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="rounded-2xl bg-card/60 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy className="h-4 w-4 text-[oklch(0.7_0.02_260)]" />
-            <h2 className="text-sm font-semibold tracking-wide">Top members — this month</h2>
-          </div>
-          <div className="divide-y divide-border">
-            {monthly.length === 0 && <p className="py-4 text-sm text-muted-foreground text-center">No points yet this month.</p>}
-            {monthly.slice(0, 10).map(([uid, n], i) => (
-              <div key={uid} className="flex items-center gap-3 py-2.5">
-                <span className={`grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[11px] font-bold ${medalClass(i)}`}>{i + 1}</span>
-                <span className="flex-1 text-sm truncate">{profiles[uid] ?? "—"}</span>
-                <span className="text-sm font-mono tabular-nums">{n} <span className="text-muted-foreground text-xs">pts</span></span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+      <Card className="rounded-2xl bg-card/60 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Trophy className="h-4 w-4 text-[oklch(0.78_0.16_75)]" />
+          <h2 className="text-sm font-semibold tracking-wide">Top members</h2>
+          <Badge variant="outline" className="ml-auto text-[10px]">{currentPeriodLabel}</Badge>
+        </div>
+        <div className="divide-y divide-border">
+          {periodRows.length === 0 && (
+            <p className="py-4 text-sm text-muted-foreground text-center">No points recorded for this period.</p>
+          )}
+          {periodRows.slice(0, 15).map(([uid, n], i) => (
+            <div key={uid} className="flex items-center gap-3 py-2.5">
+              <span className={`grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[11px] font-bold ${medalClass(i)}`}>
+                {i + 1}
+              </span>
+              <span className="flex-1 text-sm truncate">{profiles[uid] ?? "—"}</span>
+              <span className="text-sm font-mono tabular-nums">
+                {n} <span className="text-muted-foreground text-xs">pts</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <Card className="rounded-2xl bg-card/60 p-5">
         <div className="flex items-center gap-2 mb-4">
@@ -278,7 +307,7 @@ function Leaderboard() {
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="rounded-xl border border-border bg-background/30 p-4 space-y-2">
               <p className="text-sm font-medium">Reset leaderboard</p>
-              <p className="text-xs text-muted-foreground">Deletes all points records. Weekly and monthly rankings will be cleared for everyone.</p>
+              <p className="text-xs text-muted-foreground">Deletes all points records. Rankings will be cleared for everyone.</p>
               <Button variant="destructive" size="sm" className="w-full mt-1" onClick={() => setResetPointsOpen(true)}>
                 <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset points
               </Button>
@@ -299,7 +328,7 @@ function Leaderboard() {
         onOpenChange={setResetPointsOpen}
         onConfirmed={resetPoints}
         title="Reset all points"
-        description="This will permanently delete every entry in the points log. All weekly and monthly leaderboard rankings will be wiped."
+        description="This will permanently delete every entry in the points log. All leaderboard rankings will be wiped."
         warning="This cannot be undone. All staff points will be lost."
       />
       <ResetDialog

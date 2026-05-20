@@ -14,6 +14,7 @@ import {
   LogOut,
   Crown,
   FileImage,
+  BarChart2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -95,6 +96,11 @@ export function AppSidebar() {
             <SidebarGroupLabel>Administration</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={path === "/stats"} tooltip="Team Stats">
+                    <Link to="/stats"><BarChart2 className="h-4 w-4" /><span>Team Stats</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={path === "/comp"} tooltip="Comp Queue">
                     <Link to="/comp"><Gift className="h-4 w-4" /><span>Comp Queue</span></Link>
