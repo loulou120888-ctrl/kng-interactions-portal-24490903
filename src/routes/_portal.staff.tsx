@@ -216,15 +216,32 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
 
   async function toggleDeactivated() {
     const next = !staff.deactivated;
-    if (!confirm(`${next ? "Deactivate" : "Reactivate"} ${staff.display_name}? ${next ? "They will be immediately signed out and unable to log back in." : "They will be able to sign in again."}`)) return;
+    const confirmMsg = next
+      ? `Deactivate ${staff.display_name}?\n\nThis will:\n• Sign them out immediately\n• Delete ALL their interactions, points, and mentoring progress\n• Prevent them from logging back in\n\nThis cannot be undone.`
+      : `Reactivate ${staff.display_name}? They will be able to sign in again.`;
+    if (!confirm(confirmMsg)) return;
     setBusy(true);
+
+    if (next) {
+      const sb = supabase as any;
+      const wipes = await Promise.all([
+        supabase.from("interactions").delete().eq("author_id", staff.id),
+        supabase.from("interaction_attendees").delete().eq("user_id", staff.id),
+        supabase.from("points_log").delete().eq("user_id", staff.id),
+        sb.from("mentoring_progress").delete().eq("user_id", staff.id),
+        sb.from("mentoring_quiz_results").delete().eq("user_id", staff.id),
+      ]);
+      const wipeError = wipes.find(r => r.error)?.error;
+      if (wipeError) { setBusy(false); toast.error(`Failed to clear stats: ${wipeError.message}`); return; }
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update({ deactivated: next } as any)
       .eq("id", staff.id);
     if (error) { setBusy(false); toast.error(error.message); return; }
     setBusy(false);
-    toast.success(next ? "Account deactivated" : "Account reactivated");
+    toast.success(next ? "Account deactivated and all stats removed" : "Account reactivated");
     onChanged();
   }
 
