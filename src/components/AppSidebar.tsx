@@ -16,6 +16,7 @@ import {
   FileImage,
   BarChart2,
   User,
+  GraduationCap,
 } from "lucide-react";
 import {
   Sidebar,
@@ -43,6 +44,7 @@ const mainItems = [
   { title: "Leaderboard", url: "/leaderboard", icon: Trophy },
   { title: "Announcements", url: "/announcements", icon: Megaphone },
   { title: "Hall of Fame", url: "/hall", icon: ImageIcon },
+  { title: "Tutorial", url: "/tutorial", icon: GraduationCap },
 ];
 
 export function AppSidebar() {
