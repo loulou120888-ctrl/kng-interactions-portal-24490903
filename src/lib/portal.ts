@@ -1,9 +1,10 @@
 // Shared portal constants & helpers
-export type Role = "member" | "sld" | "ld" | "aux" | "adm" | "manager";
+export type Role = "helper" | "member" | "sld" | "ld" | "aux" | "adm" | "manager";
 export type Department = "events" | "parties" | "entertainment";
 export type ScheduleType = "events_parties" | "entertainment";
 
 export const ROLE_LABEL: Record<Role, string> = {
+  helper: "Helper",
   member: "Member",
   sld: "S.LD",
   ld: "LD",
@@ -13,10 +14,10 @@ export const ROLE_LABEL: Record<Role, string> = {
 };
 
 export const ROLE_RANK: Record<Role, number> = {
-  member: 1, sld: 2, ld: 3, aux: 4, adm: 5, manager: 6,
+  helper: 1, member: 1, sld: 2, ld: 3, aux: 4, adm: 5, manager: 6,
 };
 
-export const ALL_ROLES: Role[] = ["member", "sld", "ld", "aux", "adm", "manager"];
+export const ALL_ROLES: Role[] = ["helper", "member", "sld", "ld", "aux", "adm", "manager"];
 
 export const DEPARTMENTS: Department[] = ["events", "parties", "entertainment"];
 

@@ -21,6 +21,7 @@ interface Staff {
   username: string | null;
   department: Department | null;
   avatar_url: string | null;
+  city_id: string | null;
   status: string;
   deactivated: boolean;
   roles: Role[];
@@ -184,6 +185,7 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
 }) {
   const [name, setName] = useState(staff.display_name);
   const [dept, setDept] = useState<Department | "">(staff.department ?? "");
+  const [cityId, setCityId] = useState(staff.city_id ?? "");
   const top = staff.roles.slice().sort((a, b) => ROLE_RANK[b] - ROLE_RANK[a])[0];
   const [role, setRole] = useState<Role>(top);
   const [busy, setBusy] = useState(false);
@@ -198,7 +200,7 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
     setBusy(true);
     const { error: pe } = await supabase
       .from("profiles")
-      .update({ display_name: name.trim(), department: dept || null })
+      .update({ display_name: name.trim(), department: dept || null, city_id: cityId.trim() || null } as any)
       .eq("id", staff.id);
     if (pe) { setBusy(false); toast.error(pe.message); return; }
 
@@ -289,6 +291,10 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>City ID</Label>
+            <Input value={cityId} onChange={(e) => setCityId(e.target.value)} placeholder="In-city identifier" />
           </div>
           <div className="space-y-2">
             <Label>Role</Label>

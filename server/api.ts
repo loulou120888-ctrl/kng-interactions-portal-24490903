@@ -14,7 +14,7 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 }
 
 const ROLE_RANK: Record<string, number> = {
-  member: 1, sld: 2, ld: 3, aux: 4, adm: 5, manager: 6,
+  helper: 1, member: 1, sld: 2, ld: 3, aux: 4, adm: 5, manager: 6,
 };
 
 async function getCallerInfo(authHeader: string | undefined): Promise<{ userId: string; topRole: string } | null> {
@@ -112,6 +112,7 @@ app.post("/api/admin/reset-password", async (req, res) => {
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
+
 
 const PORT = 8000;
 app.listen(PORT, "0.0.0.0", () => {

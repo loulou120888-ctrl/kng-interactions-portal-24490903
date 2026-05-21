@@ -70,9 +70,11 @@ function Codes({ canManager, userId, actorTopRole }: {
     if (error) toast.error(error.message); else load();
   }
 
-  // Can only generate codes for roles strictly below your own rank
+  // Managers can generate codes for any role including their own; others only below their rank
   const actorRank = ROLE_RANK[actorTopRole];
-  const allowedRoles = ALL_ROLES.filter(r => ROLE_RANK[r] < actorRank);
+  const allowedRoles = canManager
+    ? ALL_ROLES.filter(r => ROLE_RANK[r] <= actorRank)
+    : ALL_ROLES.filter(r => ROLE_RANK[r] < actorRank);
 
   // If current role selection is no longer allowed, reset to first allowed
   const safeRole = allowedRoles.includes(role) ? role : (allowedRoles[0] ?? "member");

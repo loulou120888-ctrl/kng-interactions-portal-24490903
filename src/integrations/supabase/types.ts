@@ -312,6 +312,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          city_id: string | null
           created_at: string
           deactivated: boolean
           department: Database["public"]["Enums"]["department"] | null
@@ -319,9 +320,11 @@ export type Database = {
           id: string
           status: string
           updated_at: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
+          city_id?: string | null
           created_at?: string
           deactivated?: boolean
           department?: Database["public"]["Enums"]["department"] | null
@@ -329,9 +332,11 @@ export type Database = {
           id: string
           status?: string
           updated_at?: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
+          city_id?: string | null
           created_at?: string
           deactivated?: boolean
           department?: Database["public"]["Enums"]["department"] | null
@@ -339,6 +344,7 @@ export type Database = {
           id?: string
           status?: string
           updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -461,7 +467,7 @@ export type Database = {
       is_staff: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "member" | "sld" | "ld" | "aux" | "adm" | "manager"
+      app_role: "helper" | "member" | "sld" | "ld" | "aux" | "adm" | "manager"
       department: "events" | "parties" | "entertainment"
       schedule_type: "events_parties" | "entertainment"
       slot_status: "booked" | "in_progress" | "completed" | "cancelled"

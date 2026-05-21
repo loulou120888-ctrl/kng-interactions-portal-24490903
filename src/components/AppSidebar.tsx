@@ -15,6 +15,7 @@ import {
   Crown,
   FileImage,
   BarChart2,
+  User,
 } from "lucide-react";
 import {
   Sidebar,
@@ -30,7 +31,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ROLE_LABEL } from "@/lib/portal";
 
 const mainItems = [
@@ -48,9 +49,8 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const { user, isAuxPlus, isManager, topRole, signOut, displayName } = useAuth();
+  const { user, isAuxPlus, isManager, topRole, signOut, displayName, avatarUrl } = useAuth();
 
-  // Show display name if loaded, otherwise parse username from internal email
   const username = displayName || user?.email?.replace(/@kngportal\.com$/, "") || user?.email || "—";
   const initial = username[0]?.toUpperCase() ?? "?";
 
@@ -131,9 +131,12 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <div className="flex items-center gap-2">
-          <Avatar className="h-8 w-8 border border-sidebar-border">
-            <AvatarFallback className="bg-secondary text-xs">{initial}</AvatarFallback>
-          </Avatar>
+          <Link to="/profile" className="flex-shrink-0">
+            <Avatar className="h-8 w-8 border border-sidebar-border hover:ring-2 hover:ring-primary/40 transition">
+              <AvatarImage src={avatarUrl ?? undefined} />
+              <AvatarFallback className="bg-secondary text-xs">{initial}</AvatarFallback>
+            </Avatar>
+          </Link>
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0">
@@ -142,6 +145,13 @@ export function AppSidebar() {
                   {ROLE_LABEL[topRole]}
                 </p>
               </div>
+              <Link
+                to="/profile"
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+                aria-label="Profile settings"
+              >
+                <User className="h-4 w-4" />
+              </Link>
               <button
                 onClick={() => signOut()}
                 className="rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"

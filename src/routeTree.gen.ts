@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalStatsRouteImport } from './routes/_portal.stats'
 import { Route as PortalStaffRouteImport } from './routes/_portal.staff'
 import { Route as PortalSearchRouteImport } from './routes/_portal.search'
+import { Route as PortalProfileRouteImport } from './routes/_portal.profile'
 import { Route as PortalPostersRouteImport } from './routes/_portal.posters'
 import { Route as PortalLeaderboardRouteImport } from './routes/_portal.leaderboard'
 import { Route as PortalInteractionsRouteImport } from './routes/_portal.interactions'
@@ -73,6 +74,11 @@ const PortalStaffRoute = PortalStaffRouteImport.update({
 const PortalSearchRoute = PortalSearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalProfileRoute = PortalProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => PortalRoute,
 } as any)
 const PortalPostersRoute = PortalPostersRouteImport.update({
@@ -152,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/interactions': typeof PortalInteractionsRoute
   '/leaderboard': typeof PortalLeaderboardRoute
   '/posters': typeof PortalPostersRoute
+  '/profile': typeof PortalProfileRoute
   '/search': typeof PortalSearchRoute
   '/staff': typeof PortalStaffRouteWithChildren
   '/stats': typeof PortalStatsRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/interactions': typeof PortalInteractionsRoute
   '/leaderboard': typeof PortalLeaderboardRoute
   '/posters': typeof PortalPostersRoute
+  '/profile': typeof PortalProfileRoute
   '/search': typeof PortalSearchRoute
   '/staff': typeof PortalStaffRouteWithChildren
   '/stats': typeof PortalStatsRoute
@@ -198,6 +206,7 @@ export interface FileRoutesById {
   '/_portal/interactions': typeof PortalInteractionsRoute
   '/_portal/leaderboard': typeof PortalLeaderboardRoute
   '/_portal/posters': typeof PortalPostersRoute
+  '/_portal/profile': typeof PortalProfileRoute
   '/_portal/search': typeof PortalSearchRoute
   '/_portal/staff': typeof PortalStaffRouteWithChildren
   '/_portal/stats': typeof PortalStatsRoute
@@ -222,6 +231,7 @@ export interface FileRouteTypes {
     | '/interactions'
     | '/leaderboard'
     | '/posters'
+    | '/profile'
     | '/search'
     | '/staff'
     | '/stats'
@@ -244,6 +254,7 @@ export interface FileRouteTypes {
     | '/interactions'
     | '/leaderboard'
     | '/posters'
+    | '/profile'
     | '/search'
     | '/staff'
     | '/stats'
@@ -267,6 +278,7 @@ export interface FileRouteTypes {
     | '/_portal/interactions'
     | '/_portal/leaderboard'
     | '/_portal/posters'
+    | '/_portal/profile'
     | '/_portal/search'
     | '/_portal/staff'
     | '/_portal/stats'
@@ -347,6 +359,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof PortalSearchRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/profile': {
+      id: '/_portal/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof PortalProfileRouteImport
       parentRoute: typeof PortalRoute
     }
     '/_portal/posters': {
@@ -458,6 +477,7 @@ interface PortalRouteChildren {
   PortalInteractionsRoute: typeof PortalInteractionsRoute
   PortalLeaderboardRoute: typeof PortalLeaderboardRoute
   PortalPostersRoute: typeof PortalPostersRoute
+  PortalProfileRoute: typeof PortalProfileRoute
   PortalSearchRoute: typeof PortalSearchRoute
   PortalStaffRoute: typeof PortalStaffRouteWithChildren
   PortalStatsRoute: typeof PortalStatsRoute
@@ -475,6 +495,7 @@ const PortalRouteChildren: PortalRouteChildren = {
   PortalInteractionsRoute: PortalInteractionsRoute,
   PortalLeaderboardRoute: PortalLeaderboardRoute,
   PortalPostersRoute: PortalPostersRoute,
+  PortalProfileRoute: PortalProfileRoute,
   PortalSearchRoute: PortalSearchRoute,
   PortalStaffRoute: PortalStaffRouteWithChildren,
   PortalStatsRoute: PortalStatsRoute,

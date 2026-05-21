@@ -19,6 +19,7 @@ const schema = z.object({
     .max(32, "Username must be 32 characters or less")
     .regex(/^[a-z0-9_]+$/, "Username can only contain lowercase letters, numbers and underscores"),
   display_name: z.string().trim().min(1, "Display name required").max(80),
+  city_id: z.string().trim().max(80),
   password: z.string().min(6, "Password must be at least 6 characters").max(72),
 });
 
@@ -51,7 +52,7 @@ function errorMessage(msg: string, hasCode: boolean): string {
 
 function SignupPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ signup_code: "", username: "", display_name: "", password: "" });
+  const [form, setForm] = useState({ signup_code: "", username: "", display_name: "", city_id: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState<PageState>("form");
@@ -77,6 +78,7 @@ function SignupPage() {
         data: {
           display_name: parsed.data.display_name,
           signup_code: parsed.data.signup_code,
+          city_id: parsed.data.city_id || undefined,
         },
       },
     });
@@ -189,6 +191,16 @@ function SignupPage() {
                 required
               />
               <p className="text-xs text-muted-foreground">Your visible name in the portal.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>City ID <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input
+                value={form.city_id}
+                onChange={(e) => set("city_id", e.target.value)}
+                placeholder="Your in-city or resort ID"
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">Your in-city identifier used by the team. Can be updated later.</p>
             </div>
             <div className="space-y-2">
               <Label>Password</Label>
