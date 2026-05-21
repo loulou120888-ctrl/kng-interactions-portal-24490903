@@ -150,7 +150,7 @@ export function ScheduleView({
     const dEnd = new Date(+new Date(dStart) + 86400000).toISOString();
     const dow = date.getDay();
 
-    const [mainRes, crossRes, tmplRes] = await Promise.all([
+    const [mainRes, crossRes, tmplRes, entTmplRes] = await Promise.all([
       supabase.from("schedule_slots").select("*")
         .eq("schedule_type", scheduleType)
         .gte("slot_start", dStart).lt("slot_start", dEnd)
@@ -169,6 +169,14 @@ export function ScheduleView({
             .eq("day_of_week", dow)
             .eq("is_active", true)
         : Promise.resolve({ data: [] as any[], error: null }),
+
+      // Also fetch entertainment recurring templates so E&P view blocks those times
+      !isEntertainment
+        ? supabase.from("recurring_templates").select("slot_index, title")
+            .eq("schedule_type", "entertainment")
+            .eq("day_of_week", dow)
+            .eq("is_active", true)
+        : Promise.resolve({ data: [] as any[], error: null }),
     ]);
 
     const existing = (mainRes.data ?? []) as Slot[];
@@ -176,13 +184,26 @@ export function ScheduleView({
       existing.filter(s => s.status !== "cancelled").map(s => new Date(s.slot_start).toISOString())
     );
 
-    // Entertainment cross-block for E&P view
+    // Entertainment cross-block for E&P view (actual booked slots + recurring templates)
     if (!isEntertainment) {
       const blocked: Record<string, string> = {};
       (crossRes.data ?? []).forEach((s: any) => {
         blocked[new Date(s.slot_start).toISOString()] = s.title;
       });
+      // Add entertainment recurring template times that haven't been materialised yet
+      const entRecurringIsos: string[] = [];
+      (entTmplRes.data ?? []).forEach((t: any) => {
+        const iso = localSlots[t.slot_index];
+        if (iso && !blocked[iso]) {
+          blocked[iso] = t.title;
+          entRecurringIsos.push(iso);
+        }
+      });
       setCrossBlockedIsos(blocked);
+      // Cancel any E&P slots that conflict with entertainment recurring templates
+      if (entRecurringIsos.length) {
+        await cancelConflictingEPSlots(entRecurringIsos);
+      }
     }
 
     // Materialize recurring templates for today's day-of-week
