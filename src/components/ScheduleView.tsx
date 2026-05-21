@@ -803,8 +803,8 @@ function RecurringDialog({
 }) {
   const { user } = useAuth();
   const [templates, setTemplates] = useState<RecurringTemplate[]>([]);
-  const [dow, setDow] = useState(1);
-  const [slotIdx, setSlotIdx] = useState(40); // default ~8pm
+  const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set());
+  const [selectedTimes, setSelectedTimes] = useState<Set<number>>(new Set());
   const [dept, setDept] = useState<Department>(allowedDepartments[0]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -819,21 +819,40 @@ function RecurringDialog({
 
   useEffect(() => { if (open) loadTemplates(); /* eslint-disable-next-line */ }, [open, scheduleType]);
 
+  function toggleDay(d: number) {
+    setSelectedDays(prev => { const s = new Set(prev); s.has(d) ? s.delete(d) : s.add(d); return s; });
+  }
+  function toggleTime(t: number) {
+    setSelectedTimes(prev => { const s = new Set(prev); s.has(t) ? s.delete(t) : s.add(t); return s; });
+  }
+
+  const totalToAdd = selectedDays.size * selectedTimes.size;
+
   async function add() {
     if (!user || !title.trim()) { toast.error("Title required"); return; }
+    if (selectedDays.size === 0) { toast.error("Select at least one day"); return; }
+    if (selectedTimes.size === 0) { toast.error("Select at least one time"); return; }
     setBusy(true);
-    const { error } = await supabase.from("recurring_templates").insert({
-      schedule_type: scheduleType,
-      day_of_week: dow,
-      slot_index: slotIdx,
-      department: dept,
-      title: title.trim(),
-      notes: notes.trim() || null,
-      created_by: user.id,
-    });
+    const rows = [];
+    for (const dow of Array.from(selectedDays).sort()) {
+      for (const slotIdx of Array.from(selectedTimes).sort((a, b) => a - b)) {
+        rows.push({
+          schedule_type: scheduleType,
+          day_of_week: dow,
+          slot_index: slotIdx,
+          department: dept,
+          title: title.trim(),
+          notes: notes.trim() || null,
+          created_by: user.id,
+        });
+      }
+    }
+    const { error } = await supabase.from("recurring_templates").insert(rows);
     setBusy(false);
-    if (error) toast.error(error.message);
-    else { toast.success("Recurring slot added"); setTitle(""); setNotes(""); loadTemplates(); }
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Added ${rows.length} recurring slot${rows.length !== 1 ? "s" : ""}`);
+    setTitle(""); setNotes(""); setSelectedDays(new Set()); setSelectedTimes(new Set());
+    loadTemplates();
   }
 
   async function remove(id: string) {
@@ -842,9 +861,20 @@ function RecurringDialog({
     else { toast.success("Recurring slot removed"); loadTemplates(); }
   }
 
+  // Show every hour (index 0, 2, 4 … 46) + every half (1, 3 …) — full 48 slots
+  // Group into hourly rows: each pair of indices (even=:00, odd=:30)
+  const timeRows: Array<{ label: string; indices: number[] }> = [];
+  for (let h = 0; h < 24; h++) {
+    const even = h * 2;       // :00
+    const odd  = h * 2 + 1;   // :30
+    timeRows.push({ label: fmtSlot(REF_SLOTS[even]), indices: [even, odd] });
+  }
+
+  const DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <RefreshCw className="h-4 w-4" /> Recurring slots
@@ -852,33 +882,79 @@ function RecurringDialog({
         </DialogHeader>
         <div className="space-y-5">
           <p className="text-xs text-muted-foreground">
-            Recurring slots appear automatically every week on the chosen day and time. They are created as normal slots when the schedule page is first viewed for that day.
+            Pick multiple days and times — slots are created automatically every week and materialise when the schedule page is first loaded for that day.
           </p>
 
-          <div className="rounded-xl border border-border p-4 space-y-3 bg-background/40">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add new recurring slot</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Day of week</Label>
-                <Select value={String(dow)} onValueChange={(v) => setDow(Number(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {DAYS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Time</Label>
-                <Select value={String(slotIdx)} onValueChange={(v) => setSlotIdx(Number(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent className="max-h-52">
-                    {REF_SLOTS.map((iso, i) => (
-                      <SelectItem key={i} value={String(i)}>{fmtSlot(iso)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <div className="rounded-xl border border-border p-4 space-y-4 bg-background/40">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">New recurring slot(s)</p>
+
+            {/* Days */}
+            <div className="space-y-2">
+              <Label>Days <span className="text-muted-foreground font-normal">(select multiple)</span></Label>
+              <div className="flex gap-1.5 flex-wrap">
+                {DAY_FULL.map((d, i) => {
+                  const on = selectedDays.has(i);
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => toggleDay(i)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                        on
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Times */}
+            <div className="space-y-2">
+              <Label>Times <span className="text-muted-foreground font-normal">(select multiple)</span></Label>
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-border p-2 bg-background/60">
+                <div className="grid grid-cols-4 gap-1">
+                  {timeRows.map(({ label, indices }) => {
+                    const [even, odd] = indices;
+                    const evenOn = selectedTimes.has(even);
+                    const oddOn  = selectedTimes.has(odd);
+                    return [
+                      <button
+                        key={even}
+                        onClick={() => toggleTime(even)}
+                        className={`px-2 py-1.5 rounded text-[11px] font-mono font-medium border transition-all text-center ${
+                          evenOn
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        }`}
+                      >
+                        {label}
+                      </button>,
+                      <button
+                        key={odd}
+                        onClick={() => toggleTime(odd)}
+                        className={`px-2 py-1.5 rounded text-[11px] font-mono font-medium border transition-all text-center ${
+                          oddOn
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        }`}
+                      >
+                        {fmtSlot(REF_SLOTS[odd])}
+                      </button>,
+                    ];
+                  })}
+                </div>
+              </div>
+              {selectedTimes.size > 0 && (
+                <p className="text-[11px] text-muted-foreground">
+                  Selected: {Array.from(selectedTimes).sort((a, b) => a - b).map(i => fmtSlot(REF_SLOTS[i])).join(", ")}
+                </p>
+              )}
+            </div>
+
+            {/* Department */}
             {allowedDepartments.length > 1 && (
               <div className="space-y-2">
                 <Label>Department</Label>
@@ -890,6 +966,8 @@ function RecurringDialog({
                 </Select>
               </div>
             )}
+
+            {/* Title + Notes */}
             <div className="space-y-2">
               <Label>Title</Label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Weekly quiz night" />
@@ -898,11 +976,25 @@ function RecurringDialog({
               <Label>Notes <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
               <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
-            <Button className="w-full" onClick={add} disabled={busy || !title.trim()}>
-              <Plus className="h-4 w-4 mr-1.5" /> Add recurring slot
+
+            {/* Summary + Add */}
+            {totalToAdd > 0 && (
+              <p className="text-xs text-muted-foreground text-center">
+                Will create <span className="font-semibold text-foreground">{totalToAdd}</span> slot{totalToAdd !== 1 ? "s" : ""}
+                {" "}({selectedDays.size} day{selectedDays.size !== 1 ? "s" : ""} × {selectedTimes.size} time{selectedTimes.size !== 1 ? "s" : ""})
+              </p>
+            )}
+            <Button
+              className="w-full"
+              onClick={add}
+              disabled={busy || !title.trim() || selectedDays.size === 0 || selectedTimes.size === 0}
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              {totalToAdd > 1 ? `Add ${totalToAdd} recurring slots` : "Add recurring slot"}
             </Button>
           </div>
 
+          {/* Existing templates */}
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {templates.length} recurring slot{templates.length !== 1 ? "s" : ""}
@@ -917,7 +1009,7 @@ function RecurringDialog({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{t.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {DAYS[t.day_of_week]} · {fmtSlot(REF_SLOTS[t.slot_index])} · {DEPT_LABEL[t.department]}
+                      {DAY_FULL[t.day_of_week]} · {fmtSlot(REF_SLOTS[t.slot_index])} · {DEPT_LABEL[t.department]}
                     </p>
                     {t.notes && <p className="text-[11px] text-muted-foreground/70 truncate">{t.notes}</p>}
                   </div>
