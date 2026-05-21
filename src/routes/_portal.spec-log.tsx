@@ -5,12 +5,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ListChecks, Copy, Check, RotateCcw } from "lucide-react";
+import { ListChecks, Copy, Check, RotateCcw, Users } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_portal/spec-log")({ component: SpecLog });
 
 type Status = "hosting" | "in_rp" | "out_of_city";
+type Department = "events" | "parties" | "entertainment";
+type TeamFilter = Department | "all";
 
 const OPTIONS: { value: Status; label: string; emoji: string; active: string }[] = [
   { value: "hosting",     label: "Hosting",     emoji: "🎙️", active: "bg-green-500/15 text-green-400 border-green-500/40" },
@@ -18,18 +20,26 @@ const OPTIONS: { value: Status; label: string; emoji: string; active: string }[]
   { value: "out_of_city", label: "Out of city",  emoji: "✈️", active: "bg-orange-500/15 text-orange-400 border-orange-500/40" },
 ];
 
-type Profile = { id: string; display_name: string; city_id: string | null };
+const TEAMS: { value: TeamFilter; label: string; emoji: string }[] = [
+  { value: "all",           label: "All Staff",    emoji: "👥" },
+  { value: "events",        label: "Events",       emoji: "🎉" },
+  { value: "parties",       label: "Parties",      emoji: "🎊" },
+  { value: "entertainment", label: "Entertainment", emoji: "🎭" },
+];
+
+type Profile = { id: string; display_name: string; city_id: string | null; department: Department | null };
 
 function SpecLog() {
   const { isAuxPlus } = useAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [statuses, setStatuses] = useState<Record<string, Status | null>>({});
+  const [team, setTeam] = useState<TeamFilter>("all");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     supabase
       .from("profiles")
-      .select("id, display_name, city_id")
+      .select("id, display_name, city_id, department")
       .eq("deactivated", false)
       .order("display_name")
       .then(({ data }) => setProfiles((data ?? []) as Profile[]));
@@ -39,12 +49,21 @@ function SpecLog() {
     return <p className="text-sm text-muted-foreground">AUX+ only.</p>;
   }
 
+  const visible = team === "all"
+    ? profiles
+    : profiles.filter(p => p.department === team);
+
   function toggle(id: string, value: Status) {
     setStatuses(prev => ({ ...prev, [id]: prev[id] === value ? null : value }));
   }
 
   function reset() {
-    setStatuses({});
+    const resetIds = visible.map(p => p.id);
+    setStatuses(prev => {
+      const next = { ...prev };
+      resetIds.forEach(id => { next[id] = null; });
+      return next;
+    });
   }
 
   async function copyList() {
@@ -52,15 +71,16 @@ function SpecLog() {
       hosting: [], in_rp: [], out_of_city: [], none: [],
     };
 
-    profiles.forEach(p => {
+    visible.forEach(p => {
       const s = statuses[p.id] ?? null;
       const label = p.city_id ? `${p.display_name} (${p.city_id})` : p.display_name;
       groups[s ?? "none"].push(label);
     });
 
+    const teamLabel = TEAMS.find(t => t.value === team)!;
     const lines: string[] = [
-      `📋 Staff Spec Log — ${new Date().toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" })}`,
-      "─".repeat(34),
+      `📋 Spec Log — ${teamLabel.emoji} ${teamLabel.label} — ${new Date().toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" })}`,
+      "─".repeat(38),
     ];
 
     if (groups.hosting.length)     lines.push(`🎙️  Hosting: ${groups.hosting.join(", ")}`);
@@ -74,7 +94,8 @@ function SpecLog() {
     setTimeout(() => setCopied(false), 2500);
   }
 
-  const setCount = profiles.filter(p => statuses[p.id]).length;
+  const setCount = visible.filter(p => statuses[p.id]).length;
+  const hasAny = visible.some(p => statuses[p.id]);
 
   return (
     <div className="space-y-6">
@@ -84,16 +105,16 @@ function SpecLog() {
             <ListChecks className="h-6 w-6" /> Spec Log
           </h1>
           <p className="text-sm text-muted-foreground">
-            Set each team member's current status, then copy the list to share.
+            Select a team, set each member's status, then copy the list to share.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {setCount > 0 && (
             <Badge variant="outline" className="text-xs">
-              {setCount} / {profiles.length} set
+              {setCount} / {visible.length} set
             </Badge>
           )}
-          <Button variant="outline" size="sm" onClick={reset} disabled={setCount === 0}>
+          <Button variant="outline" size="sm" onClick={reset} disabled={!hasAny}>
             <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset
           </Button>
           <Button onClick={copyList} className="flex items-center gap-1.5">
@@ -103,17 +124,40 @@ function SpecLog() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card/40 p-3 text-xs text-muted-foreground flex items-center gap-2">
-        <span className="font-mono">Format preview:</span>
-        <span className="text-foreground/60">🎙️ Hosting: Alice (12345) · 🎮 In RP: Bob (67890) · ✈️ Out of city: Charlie</span>
+      <div className="flex gap-2 flex-wrap">
+        {TEAMS.map(t => (
+          <button
+            key={t.value}
+            onClick={() => setTeam(t.value)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
+              team === t.value
+                ? "border-primary/60 bg-primary/10 text-foreground"
+                : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+            }`}
+          >
+            <span>{t.emoji}</span>
+            <span>{t.label}</span>
+            <span className="text-xs opacity-60">
+              ({team === "all" || t.value === "all"
+                ? t.value === "all" ? profiles.length : profiles.filter(p => p.department === t.value).length
+                : profiles.filter(p => p.department === t.value).length})
+            </span>
+          </button>
+        ))}
       </div>
 
       <Card className="rounded-2xl bg-card/60 p-3">
         <div className="divide-y divide-border">
-          {profiles.length === 0 && (
+          {visible.length === 0 && profiles.length === 0 && (
             <p className="py-6 text-center text-sm text-muted-foreground">Loading staff…</p>
           )}
-          {profiles.map((p) => {
+          {visible.length === 0 && profiles.length > 0 && (
+            <p className="py-6 text-center text-sm text-muted-foreground flex flex-col items-center gap-1">
+              <Users className="h-5 w-5 opacity-40" />
+              No staff assigned to this team yet.
+            </p>
+          )}
+          {visible.map((p) => {
             const current = statuses[p.id] ?? null;
             return (
               <div key={p.id} className="flex items-center gap-3 py-2.5 px-2">
