@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Megaphone, Plus, ChevronDown, ChevronUp, Users } from "lucide-react";
+import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 
 export const Route = createFileRoute("/_portal/announcements")({ component: Announcements });
 
@@ -99,9 +100,9 @@ function AnnouncementCard({
         </div>
 
         {/* Body */}
-        <p className={`mt-3 text-sm leading-relaxed whitespace-pre-wrap ${isRead ? "text-muted-foreground" : "text-foreground/90"}`}>
-          {a.body}
-        </p>
+        <div className={`mt-3 ${isRead ? "text-muted-foreground" : "text-foreground/90"}`}>
+          <DiscordMarkdown text={a.body} />
+        </div>
 
         {/* Reads section for AUX+ */}
         {isAuxPlus && (
@@ -240,11 +241,29 @@ function Announcements() {
                 <div className="space-y-2">
                   <Label>Body</Label>
                   <Textarea
-                    placeholder="Write the full announcement here…"
-                    rows={6}
+                    placeholder={"Write your announcement here…\n\n# Big heading\n## Smaller heading\n**bold** *italic* __underline__ ~~strikethrough~~\n- Bullet point\n> Blockquote\n`inline code`"}
+                    rows={7}
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
+                    className="font-mono text-xs"
                   />
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 pt-0.5">
+                    {[
+                      ["# Heading", "big text"],
+                      ["**bold**", "bold"],
+                      ["*italic*", "italic"],
+                      ["__underline__", "underline"],
+                      ["~~strike~~", "strikethrough"],
+                      ["- item", "bullet"],
+                      ["> text", "quote"],
+                      ["`code`", "inline code"],
+                    ].map(([syntax, label]) => (
+                      <span key={label} className="text-[10px] text-muted-foreground font-mono">
+                        <span className="text-foreground/60">{syntax}</span>
+                        <span className="text-muted-foreground/50 ml-1 not-italic font-sans">→ {label}</span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <Button className="w-full" onClick={post} disabled={busy || !title.trim() || !body.trim()}>
                   {busy ? "Posting…" : "Post Announcement"}
