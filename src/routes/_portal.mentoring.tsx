@@ -294,58 +294,65 @@ function Mentoring() {
   );
 }
 
-function SectionRenderer({ block }: { block: SectionBlock }) {
-  const variantStyles = {
-    info: { bg: "bg-blue-500/10 border-blue-500/30", icon: <Info className="h-4 w-4 text-blue-400 flex-shrink-0 mt-0.5" />, title: "text-blue-400" },
-    tip: { bg: "bg-green-500/10 border-green-500/30", icon: <Lightbulb className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />, title: "text-green-400" },
-    warning: { bg: "bg-amber-500/10 border-amber-500/30", icon: <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />, title: "text-amber-400" },
-    danger: { bg: "bg-red-500/10 border-red-500/30", icon: <AlertTriangle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />, title: "text-red-400" },
+function SlideBlock({ block }: { block: SectionBlock }) {
+  const calloutMeta = {
+    info:    { bar: "bg-blue-500",   bg: "bg-blue-500/10 border-blue-500/30",   icon: <Info className="h-5 w-5 text-blue-400 flex-shrink-0" />,    label: "text-blue-400" },
+    tip:     { bar: "bg-green-500",  bg: "bg-green-500/10 border-green-500/30",  icon: <Lightbulb className="h-5 w-5 text-green-400 flex-shrink-0" />, label: "text-green-400" },
+    warning: { bar: "bg-amber-500",  bg: "bg-amber-500/10 border-amber-500/30",  icon: <AlertTriangle className="h-5 w-5 text-amber-400 flex-shrink-0" />, label: "text-amber-400" },
+    danger:  { bar: "bg-red-500",    bg: "bg-red-500/10 border-red-500/30",      icon: <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0" />,   label: "text-red-400" },
   };
 
   if (block.type === "heading") {
-    return <h3 className="text-base font-semibold mt-2 mb-1">{block.text}</h3>;
+    return (
+      <div className="flex items-center gap-3 pt-1">
+        <div className="h-7 w-1 rounded-full bg-primary flex-shrink-0" />
+        <h3 className="text-lg font-bold tracking-tight">{block.text}</h3>
+      </div>
+    );
   }
-  if (block.type === "body") {
-    return <p className="text-sm text-muted-foreground leading-relaxed">{block.text}</p>;
-  }
+
   if (block.type === "list") {
     return (
-      <ul className="space-y-1.5 pl-1">
+      <div className="rounded-xl border border-border bg-card/50 p-4 space-y-3">
         {block.items.map((item, i) => (
-          <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary/60 flex-shrink-0" />
-            {item}
-          </li>
+          <div key={i} className="flex items-start gap-3">
+            <div className="mt-1.5 h-2 w-2 rounded-full bg-primary/70 flex-shrink-0" />
+            <span className="text-sm font-medium leading-snug">{item}</span>
+          </div>
         ))}
-      </ul>
+      </div>
     );
   }
+
   if (block.type === "checklist") {
     return (
-      <ul className="space-y-1.5 pl-1">
+      <div className="rounded-xl border border-border bg-card/50 p-4 space-y-3">
         {block.items.map((item, i) => (
-          <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 text-primary/70 flex-shrink-0 mt-0.5" />
-            {item}
-          </li>
+          <div key={i} className="flex items-start gap-3">
+            <CheckCircle2 className="h-4.5 w-4.5 text-green-400 flex-shrink-0 mt-0.5" />
+            <span className="text-sm font-medium leading-snug">{item}</span>
+          </div>
         ))}
-      </ul>
+      </div>
     );
   }
+
   if (block.type === "callout") {
-    const s = variantStyles[block.variant];
+    const m = calloutMeta[block.variant];
     return (
-      <div className={`rounded-xl border p-4 ${s.bg}`}>
-        <div className="flex items-start gap-2.5">
-          {s.icon}
+      <div className={`rounded-xl border ${m.bg} overflow-hidden`}>
+        <div className={`h-1 w-full ${m.bar}`} />
+        <div className="flex items-start gap-3 p-4">
+          {m.icon}
           <div className="space-y-1">
-            {block.title && <p className={`text-xs font-semibold uppercase tracking-wide ${s.title}`}>{block.title}</p>}
-            <p className="text-sm text-foreground/80 leading-relaxed">{block.text}</p>
+            {block.title && <p className={`text-xs font-bold uppercase tracking-widest ${m.label}`}>{block.title}</p>}
+            <p className="text-sm font-medium leading-relaxed">{block.text}</p>
           </div>
         </div>
       </div>
     );
   }
+
   return null;
 }
 
@@ -355,53 +362,49 @@ function LessonView({
   module: Module; lesson: Lesson; isComplete: boolean;
   onComplete: () => void; onPrev: (() => void) | null; onNext: (() => void) | null; onBack: () => void;
 }) {
-  const [justCompleted, setJustCompleted] = useState(false);
-
   async function handleComplete() {
     if (isComplete) return;
     onComplete();
-    setJustCompleted(true);
     toast.success("Lesson marked complete!");
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-5">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground">
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to Academy
         </Button>
       </div>
 
-      <div className={`rounded-2xl bg-gradient-to-br ${module.gradient} border border-border/60 p-5`}>
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">{module.icon}</span>
-            <div>
-              <p className="text-xs text-muted-foreground">{module.title}</p>
-              <h1 className="text-xl font-semibold">{lesson.title}</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-black/20 px-2.5 py-1 rounded-full">
-              <Clock className="h-3.5 w-3.5" /> {lesson.estimatedMins} min
-            </div>
-            {isComplete && (
-              <Badge className="bg-green-500/15 text-green-400 border-green-500/30">
-                <CheckCircle2 className="h-3 w-3 mr-1" /> Complete
-              </Badge>
-            )}
+      {/* Slide header */}
+      <div className={`rounded-2xl bg-gradient-to-br ${module.gradient} border border-border/60 px-6 py-5`}>
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-4xl">{module.icon}</span>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{module.title}</p>
+            <h1 className="text-2xl font-bold tracking-tight mt-0.5">{lesson.title}</h1>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground mt-3">{lesson.description}</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-black/20 px-2.5 py-1 rounded-full">
+            <Clock className="h-3.5 w-3.5" /> {lesson.estimatedMins} min read
+          </div>
+          {isComplete && (
+            <Badge className="bg-green-500/15 text-green-400 border-green-500/30">
+              <CheckCircle2 className="h-3 w-3 mr-1" /> Complete
+            </Badge>
+          )}
+        </div>
       </div>
 
-      <Card className="rounded-2xl bg-card/60 p-6 space-y-4">
+      {/* Slide content — each block is its own visual card */}
+      <div className="space-y-3">
         {lesson.sections.map((block, i) => (
-          <SectionRenderer key={i} block={block} />
+          <SlideBlock key={i} block={block} />
         ))}
-      </Card>
+      </div>
 
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
         <Button variant="outline" onClick={onPrev ?? (() => {})} disabled={!onPrev}>
           <ChevronLeft className="h-4 w-4 mr-1" /> Previous
         </Button>
