@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Plus, CheckCircle2, X, Layers } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, CheckCircle2, X, Layers, RefreshCw, Trash2 } from "lucide-react";
 import {
   buildDaySlots,
   fmtSlot,
@@ -35,6 +35,24 @@ interface Slot {
   interaction_id: string | null;
 }
 
+interface RecurringTemplate {
+  id: string;
+  schedule_type: ScheduleType;
+  day_of_week: number;
+  slot_index: number;
+  department: Department;
+  title: string;
+  notes: string | null;
+  created_by: string | null;
+  is_active: boolean;
+}
+
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// Reference slot labels — use a fixed date so labels are timezone-stable
+const REF_DATE = (() => { const d = new Date(2024, 0, 1); d.setHours(0, 0, 0, 0); return d; })();
+const REF_SLOTS = buildDaySlots(REF_DATE);
+
 export function ScheduleView({
   scheduleType,
   title,
@@ -45,12 +63,16 @@ export function ScheduleView({
   allowedDepartments: Department[];
 }) {
   const { user, isAuxPlus } = useAuth();
-  const [date, setDate] = useState<Date>(() => { const d = new Date(); d.setHours(0,0,0,0); return d; });
+  const isEntertainment = scheduleType === "entertainment";
+
+  const [date, setDate] = useState<Date>(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [crossBlockedIsos, setCrossBlockedIsos] = useState<Record<string, string>>({});
   const [profiles, setProfiles] = useState<Record<string, { display_name: string }>>({});
   const [openSlot, setOpenSlot] = useState<string | null>(null);
   const [logSlot, setLogSlot] = useState<Slot | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [recurringOpen, setRecurringOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -62,28 +84,99 @@ export function ScheduleView({
   const dayStart = slotTimes[0];
   const dayEnd = new Date(new Date(dayStart).getTime() + 24 * 3600 * 1000).toISOString();
 
-  async function load() {
-    const { data } = await supabase.from("schedule_slots")
-      .select("*")
-      .eq("schedule_type", scheduleType)
-      .gte("slot_start", dayStart)
-      .lt("slot_start", dayEnd)
-      .order("slot_start");
-    setSlots((data ?? []) as Slot[]);
+  async function loadProfiles(data: Slot[]) {
     const ids = Array.from(new Set([
-      ...(data ?? []).map((s: any) => s.booked_by),
-      ...(data ?? []).filter((s: any) => s.claimed_by).map((s: any) => s.claimed_by),
+      ...data.map((s) => s.booked_by),
+      ...data.filter((s) => s.claimed_by).map((s) => s.claimed_by as string),
     ].filter(Boolean)));
-    if (ids.length) {
-      const { data: p } = await supabase.from("profiles").select("id, display_name").in("id", ids);
-      setProfiles(Object.fromEntries((p ?? []).map((x: any) => [x.id, x])));
+    if (!ids.length) return;
+    const { data: p } = await supabase.from("profiles").select("id, display_name").in("id", ids);
+    if (p) setProfiles(prev => ({ ...prev, ...Object.fromEntries(p.map((x: any) => [x.id, x])) }));
+  }
+
+  async function load() {
+    const localSlots = buildDaySlots(date);
+    const dStart = localSlots[0];
+    const dEnd = new Date(+new Date(dStart) + 86400000).toISOString();
+    const dow = date.getDay();
+
+    const [mainRes, crossRes, tmplRes] = await Promise.all([
+      supabase.from("schedule_slots").select("*")
+        .eq("schedule_type", scheduleType)
+        .gte("slot_start", dStart).lt("slot_start", dEnd)
+        .order("slot_start"),
+
+      !isEntertainment
+        ? supabase.from("schedule_slots").select("slot_start, title")
+            .eq("schedule_type", "entertainment")
+            .gte("slot_start", dStart).lt("slot_start", dEnd)
+            .neq("status", "cancelled")
+        : Promise.resolve({ data: [] as any[], error: null }),
+
+      user
+        ? supabase.from("recurring_templates").select("*")
+            .eq("schedule_type", scheduleType)
+            .eq("day_of_week", dow)
+            .eq("is_active", true)
+        : Promise.resolve({ data: [] as any[], error: null }),
+    ]);
+
+    const existing = (mainRes.data ?? []) as Slot[];
+    const activeIsos = new Set(
+      existing.filter(s => s.status !== "cancelled").map(s => new Date(s.slot_start).toISOString())
+    );
+
+    // Entertainment cross-block for E&P view
+    if (!isEntertainment) {
+      const blocked: Record<string, string> = {};
+      (crossRes.data ?? []).forEach((s: any) => {
+        blocked[new Date(s.slot_start).toISOString()] = s.title;
+      });
+      setCrossBlockedIsos(blocked);
+    }
+
+    // Materialize recurring templates for today's day-of-week
+    let didInsert = false;
+    if (user && (tmplRes.data ?? []).length > 0) {
+      const toInsert = (tmplRes.data as RecurringTemplate[]).filter(t => {
+        const iso = localSlots[t.slot_index];
+        return iso && !activeIsos.has(iso);
+      });
+      if (toInsert.length) {
+        await Promise.all(
+          toInsert.map(t =>
+            supabase.from("schedule_slots").insert({
+              schedule_type: scheduleType,
+              slot_start: localSlots[t.slot_index],
+              department: t.department,
+              title: t.title,
+              notes: t.notes,
+              booked_by: user.id,
+            })
+          )
+        );
+        didInsert = true;
+      }
+    }
+
+    if (didInsert) {
+      const { data: fresh } = await supabase.from("schedule_slots").select("*")
+        .eq("schedule_type", scheduleType)
+        .gte("slot_start", dStart).lt("slot_start", dEnd)
+        .order("slot_start");
+      const freshSlots = (fresh ?? []) as Slot[];
+      setSlots(freshSlots);
+      await loadProfiles(freshSlots);
+    } else {
+      setSlots(existing);
+      await loadProfiles(existing);
     }
   }
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [date, scheduleType]);
 
   useEffect(() => {
-    const ch = supabase.channel(`slots-${scheduleType}`)
+    const ch = supabase.channel(`schedule-view-${scheduleType}-${dayStart}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "schedule_slots" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -92,9 +185,12 @@ export function ScheduleView({
 
   const slotMap = useMemo(() => {
     const m: Record<string, Slot> = {};
-    slots.filter(s => s.status !== "cancelled").forEach((s) => { m[new Date(s.slot_start).toISOString()] = s; });
+    slots.filter(s => s.status !== "cancelled").forEach(s => { m[new Date(s.slot_start).toISOString()] = s; });
     return m;
   }, [slots]);
+
+  // Only AUX+ can book entertainment; anyone can book E&P
+  const canBook = !isEntertainment || isAuxPlus;
 
   function shiftDay(n: number) {
     const d = new Date(date); d.setDate(d.getDate() + n); setDate(d);
@@ -105,16 +201,26 @@ export function ScheduleView({
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-sm text-muted-foreground">30-minute slots — live updating · click to book or claim</p>
+          <p className="text-sm text-muted-foreground">
+            30-minute slots — live updating · click to book or claim
+            {isEntertainment && !isAuxPlus && <span className="ml-1 text-muted-foreground/60">(AUX+ to book)</span>}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="icon" onClick={() => shiftDay(-1)}><ChevronLeft className="h-4 w-4" /></Button>
           <div className="px-3 py-1.5 rounded-md border border-border text-sm">{date.toDateString()}</div>
           <Button variant="outline" size="icon" onClick={() => shiftDay(1)}><ChevronRight className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="sm" onClick={() => { const d = new Date(); d.setHours(0,0,0,0); setDate(d); }}>Today</Button>
-          <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
-            <Layers className="h-4 w-4 mr-1.5" /> Bulk add
-          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setDate(d); }}>Today</Button>
+          {canBook && (
+            <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
+              <Layers className="h-4 w-4 mr-1.5" /> Bulk add
+            </Button>
+          )}
+          {isAuxPlus && (
+            <Button variant="outline" size="sm" onClick={() => setRecurringOpen(true)}>
+              <RefreshCw className="h-4 w-4 mr-1.5" /> Recurring
+            </Button>
+          )}
         </div>
       </div>
 
@@ -122,12 +228,51 @@ export function ScheduleView({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {slotTimes.map((iso) => {
             const slot = slotMap[iso];
+            const crossBlock = !isEntertainment ? crossBlockedIsos[iso] : undefined;
             const isMine = slot?.booked_by === user?.id;
             const isMyClain = slot?.claimed_by === user?.id;
-            const canManage = isMine || isAuxPlus;
-            const canLog = isMyClain || isMine || isAuxPlus;
+            // Entertainment: only AUX+ can cancel; E&P: booker or AUX+
+            const canManage = isEntertainment ? isAuxPlus : (isMine || isAuxPlus);
+            // Entertainment: anyone can log (complete); E&P: claimer, booker, or AUX+
+            const canLog = isEntertainment ? true : (isMyClain || isMine || isAuxPlus);
             const slotDate = new Date(iso);
             const isCurrentSlot = now >= slotDate && now < new Date(slotDate.getTime() + 30 * 60 * 1000);
+
+            // Entertainment cross-block: show blocked tile if E&P + no E&P slot here yet
+            if (crossBlock && !slot) {
+              return (
+                <Dialog key={iso} open={openSlot === iso} onOpenChange={(o) => setOpenSlot(o ? iso : null)}>
+                  <DialogTrigger asChild>
+                    <button className={`text-left rounded-xl border p-3 transition cursor-pointer ${
+                      isCurrentSlot
+                        ? "border-primary bg-primary/10"
+                        : "border-[oklch(0.72_0.16_210_/_0.5)] bg-[oklch(0.72_0.16_210_/_0.07)]"
+                    }`}>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className={`font-mono ${isCurrentSlot ? "text-primary font-semibold" : "text-muted-foreground"}`}>{fmtSlot(iso)}</span>
+                        <span className="h-2 w-2 rounded-full bg-[oklch(0.72_0.16_210)]" />
+                      </div>
+                      <div className="mt-2">
+                        <p className="text-xs font-medium truncate text-[oklch(0.85_0.14_210)]">{crossBlock}</p>
+                        <p className="text-[10px] text-muted-foreground">Entertainment — blocked</p>
+                      </div>
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>Entertainment booked — {fmtSlot(iso)}</DialogTitle></DialogHeader>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-[oklch(0.72_0.16_210)]" />
+                        <span className="text-[oklch(0.85_0.14_210)] font-medium">Entertainment</span>
+                      </div>
+                      <p className="font-semibold">{crossBlock}</p>
+                      <p className="text-muted-foreground text-xs">This time slot is reserved for Entertainment. Events &amp; Parties cannot be booked here.</p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              );
+            }
+
             return (
               <Dialog key={iso} open={openSlot === iso} onOpenChange={(o) => setOpenSlot(o ? iso : null)}>
                 <DialogTrigger asChild>
@@ -169,13 +314,15 @@ export function ScheduleView({
                       </div>
                     ) : (
                       <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
-                        <Plus className="h-3 w-3" /> book
+                        {canBook ? <><Plus className="h-3 w-3" /> book</> : <span>—</span>}
                       </div>
                     )}
                   </button>
                 </DialogTrigger>
                 <DialogContent>
-                  <DialogHeader><DialogTitle>{slot ? slot.title : `Book slot at ${fmtSlot(iso)}`}</DialogTitle></DialogHeader>
+                  <DialogHeader>
+                    <DialogTitle>{slot ? slot.title : `Book slot at ${fmtSlot(iso)}`}</DialogTitle>
+                  </DialogHeader>
                   {slot ? (
                     <SlotDetails
                       slot={slot}
@@ -184,16 +331,19 @@ export function ScheduleView({
                       canManage={canManage}
                       canLog={canLog}
                       currentUserId={user?.id ?? ""}
+                      isEntertainment={isEntertainment}
                       onChanged={() => { setOpenSlot(null); load(); }}
                       onLog={() => { setLogSlot(slot); setOpenSlot(null); }}
                     />
-                  ) : (
+                  ) : canBook ? (
                     <BookSlot
                       slotISO={iso}
                       scheduleType={scheduleType}
                       allowedDepartments={allowedDepartments}
                       onDone={() => { setOpenSlot(null); load(); }}
                     />
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-2">Only AUX+ staff can add Entertainment slots.</p>
                   )}
                 </DialogContent>
               </Dialog>
@@ -211,14 +361,23 @@ export function ScheduleView({
         />
       )}
 
-      <BulkAddDialog
-        open={bulkOpen}
-        onOpenChange={setBulkOpen}
+      {canBook && (
+        <BulkAddDialog
+          open={bulkOpen}
+          onOpenChange={setBulkOpen}
+          scheduleType={scheduleType}
+          allowedDepartments={allowedDepartments}
+          slotTimes={slotTimes}
+          bookedIsos={new Set(Object.keys(slotMap))}
+          onDone={() => { setBulkOpen(false); load(); }}
+        />
+      )}
+
+      <RecurringDialog
+        open={recurringOpen}
+        onOpenChange={setRecurringOpen}
         scheduleType={scheduleType}
         allowedDepartments={allowedDepartments}
-        slotTimes={slotTimes}
-        bookedIsos={new Set(Object.keys(slotMap))}
-        onDone={() => { setBulkOpen(false); load(); }}
       />
     </div>
   );
@@ -279,20 +438,20 @@ function BookSlot({ slotISO, scheduleType, allowedDepartments, onDone }: {
   );
 }
 
-function SlotDetails({ slot, bookerName, claimerName, canManage, canLog, currentUserId, onChanged, onLog }: {
+function SlotDetails({
+  slot, bookerName, claimerName, canManage, canLog, currentUserId, isEntertainment, onChanged, onLog,
+}: {
   slot: Slot;
   bookerName: string;
   claimerName: string | null;
   canManage: boolean;
   canLog: boolean;
   currentUserId: string;
+  isEntertainment: boolean;
   onChanged: () => void;
   onLog: () => void;
 }) {
-  const { isAuxPlus } = useAuth();
   const isClaimed = !!slot.claimed_by;
-  const isMyClain = slot.claimed_by === currentUserId;
-  const canUnclaim = isMyClain || isAuxPlus;
 
   async function cancel() {
     const { error } = await supabase.from("schedule_slots").update({ status: "cancelled" }).eq("id", slot.id);
@@ -327,9 +486,8 @@ function SlotDetails({ slot, bookerName, claimerName, canManage, canLog, current
                 <span className="text-primary font-medium">✓ Claimed</span>
                 <span className="text-muted-foreground ml-1">by {claimerName}</span>
               </p>
-              {canUnclaim && (
-                <Button variant="ghost" size="sm" onClick={unclaim} className="h-7 text-xs">Unclaim</Button>
-              )}
+              {/* Anyone can unclaim any slot */}
+              <Button variant="ghost" size="sm" onClick={unclaim} className="h-7 text-xs">Unclaim</Button>
             </div>
           ) : (
             <div className="flex items-center justify-between">
@@ -346,7 +504,7 @@ function SlotDetails({ slot, bookerName, claimerName, canManage, canLog, current
         <div className="flex gap-2 pt-2">
           {canLog && (
             <Button onClick={onLog} className="flex-1">
-              <CheckCircle2 className="h-4 w-4 mr-2" /> Mark completed & log
+              <CheckCircle2 className="h-4 w-4 mr-2" /> Mark completed &amp; log
             </Button>
           )}
           {canManage && (
@@ -354,7 +512,7 @@ function SlotDetails({ slot, bookerName, claimerName, canManage, canLog, current
           )}
         </div>
       )}
-      {!canLog && slot.status !== "completed" && (
+      {!canLog && slot.status !== "completed" && !isEntertainment && (
         <p className="text-xs text-muted-foreground">Claim this slot to be able to log it.</p>
       )}
     </div>
@@ -379,16 +537,10 @@ function BulkAddDialog({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
 
-  function reset() {
-    setTitle(""); setNotes(""); setSelected(new Set());
-  }
+  function reset() { setTitle(""); setNotes(""); setSelected(new Set()); }
 
   function toggle(iso: string) {
-    setSelected(prev => {
-      const s = new Set(prev);
-      if (s.has(iso)) s.delete(iso); else s.add(iso);
-      return s;
-    });
+    setSelected(prev => { const s = new Set(prev); if (s.has(iso)) s.delete(iso); else s.add(iso); return s; });
   }
 
   async function submit() {
@@ -397,12 +549,8 @@ function BulkAddDialog({
     if (selected.size === 0) { toast.error("Select at least one time slot"); return; }
     setBusy(true);
     const rows = Array.from(selected).map(iso => ({
-      schedule_type: scheduleType,
-      slot_start: iso,
-      department: dept,
-      title: title.trim(),
-      notes: notes.trim() || null,
-      booked_by: user.id,
+      schedule_type: scheduleType, slot_start: iso, department: dept,
+      title: title.trim(), notes: notes.trim() || null, booked_by: user.id,
     }));
     const { error } = await supabase.from("schedule_slots").insert(rows);
     setBusy(false);
@@ -410,8 +558,7 @@ function BulkAddDialog({
       toast.error(error.message.includes("duplicate") ? "One or more slots already booked — try selecting only free slots." : error.message);
     } else {
       toast.success(`${selected.size} slot${selected.size > 1 ? "s" : ""} booked`);
-      reset();
-      onDone();
+      reset(); onDone();
     }
   }
 
@@ -456,12 +603,7 @@ function BulkAddDialog({
                     booked ? "opacity-40 cursor-not-allowed border-border" :
                     checked ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                   }`}>
-                    <Checkbox
-                      checked={checked}
-                      disabled={booked}
-                      onCheckedChange={() => !booked && toggle(iso)}
-                      className="h-3.5 w-3.5"
-                    />
+                    <Checkbox checked={checked} disabled={booked} onCheckedChange={() => !booked && toggle(iso)} className="h-3.5 w-3.5" />
                     <span className="font-mono text-xs">{fmtSlot(iso)}</span>
                   </label>
                 );
@@ -474,6 +616,151 @@ function BulkAddDialog({
               {busy ? "Booking…" : `Book ${selected.size} slot${selected.size !== 1 ? "s" : ""}`}
             </Button>
             <Button variant="outline" onClick={() => { reset(); onOpenChange(false); }}>Cancel</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RecurringDialog({
+  open, onOpenChange, scheduleType, allowedDepartments,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  scheduleType: ScheduleType;
+  allowedDepartments: Department[];
+}) {
+  const { user } = useAuth();
+  const [templates, setTemplates] = useState<RecurringTemplate[]>([]);
+  const [dow, setDow] = useState(1);
+  const [slotIdx, setSlotIdx] = useState(40); // default ~8pm
+  const [dept, setDept] = useState<Department>(allowedDepartments[0]);
+  const [title, setTitle] = useState("");
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function loadTemplates() {
+    const { data } = await supabase.from("recurring_templates").select("*")
+      .eq("schedule_type", scheduleType)
+      .order("day_of_week").order("slot_index");
+    setTemplates((data ?? []) as RecurringTemplate[]);
+  }
+
+  useEffect(() => { if (open) loadTemplates(); /* eslint-disable-next-line */ }, [open, scheduleType]);
+
+  async function add() {
+    if (!user || !title.trim()) { toast.error("Title required"); return; }
+    setBusy(true);
+    const { error } = await supabase.from("recurring_templates").insert({
+      schedule_type: scheduleType,
+      day_of_week: dow,
+      slot_index: slotIdx,
+      department: dept,
+      title: title.trim(),
+      notes: notes.trim() || null,
+      created_by: user.id,
+    });
+    setBusy(false);
+    if (error) toast.error(error.message);
+    else { toast.success("Recurring slot added"); setTitle(""); setNotes(""); loadTemplates(); }
+  }
+
+  async function remove(id: string) {
+    const { error } = await supabase.from("recurring_templates").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Recurring slot removed"); loadTemplates(); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" /> Recurring slots
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-5">
+          <p className="text-xs text-muted-foreground">
+            Recurring slots appear automatically every week on the chosen day and time. They are created as normal slots when the schedule page is first viewed for that day.
+          </p>
+
+          <div className="rounded-xl border border-border p-4 space-y-3 bg-background/40">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add new recurring slot</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Day of week</Label>
+                <Select value={String(dow)} onValueChange={(v) => setDow(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DAYS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Time</Label>
+                <Select value={String(slotIdx)} onValueChange={(v) => setSlotIdx(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent className="max-h-52">
+                    {REF_SLOTS.map((iso, i) => (
+                      <SelectItem key={i} value={String(i)}>{fmtSlot(iso)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {allowedDepartments.length > 1 && (
+              <div className="space-y-2">
+                <Label>Department</Label>
+                <Select value={dept} onValueChange={(v) => setDept(v as Department)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {allowedDepartments.map((d) => <SelectItem key={d} value={d}>{DEPT_LABEL[d]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Weekly quiz night" />
+            </div>
+            <div className="space-y-2">
+              <Label>Notes <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+              <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
+            <Button className="w-full" onClick={add} disabled={busy || !title.trim()}>
+              <Plus className="h-4 w-4 mr-1.5" /> Add recurring slot
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {templates.length} recurring slot{templates.length !== 1 ? "s" : ""}
+            </p>
+            {templates.length === 0 && (
+              <p className="text-sm text-muted-foreground py-2">No recurring slots yet.</p>
+            )}
+            <div className="space-y-2">
+              {templates.map((t) => (
+                <div key={t.id} className="flex items-center gap-3 rounded-lg border border-border p-2.5 bg-background/40">
+                  <span className={`h-2 w-2 rounded-full flex-shrink-0 ${DEPT_BG[t.department]}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{t.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {DAYS[t.day_of_week]} · {fmtSlot(REF_SLOTS[t.slot_index])} · {DEPT_LABEL[t.department]}
+                    </p>
+                    {t.notes && <p className="text-[11px] text-muted-foreground/70 truncate">{t.notes}</p>}
+                  </div>
+                  <Button
+                    variant="ghost" size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
+                    onClick={() => remove(t.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </DialogContent>

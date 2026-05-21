@@ -309,6 +309,45 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_templates: {
+        Row: {
+          id: string
+          schedule_type: Database["public"]["Enums"]["schedule_type"]
+          day_of_week: number
+          slot_index: number
+          department: Database["public"]["Enums"]["department"]
+          title: string
+          notes: string | null
+          created_by: string | null
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          schedule_type: Database["public"]["Enums"]["schedule_type"]
+          day_of_week: number
+          slot_index: number
+          department: Database["public"]["Enums"]["department"]
+          title: string
+          notes?: string | null
+          created_by?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          schedule_type?: Database["public"]["Enums"]["schedule_type"]
+          day_of_week?: number
+          slot_index?: number
+          department?: Database["public"]["Enums"]["department"]
+          title?: string
+          notes?: string | null
+          created_by?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
