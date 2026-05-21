@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { isAuxPlus, isManager, topRole, type Role } from "@/lib/portal";
+import { isAuxPlus, isAdmPlus, isManager, topRole, type Role } from "@/lib/portal";
 import { toast } from "sonner";
 
 interface AuthContextValue {
@@ -11,6 +11,7 @@ interface AuthContextValue {
   roles: Role[];
   topRole: Role;
   isAuxPlus: boolean;
+  isAdmPlus: boolean;
   isManager: boolean;
   displayName: string;
   avatarUrl: string | null;
@@ -141,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     roles,
     topRole: topRole(roles),
     isAuxPlus: isAuxPlus(roles),
+    isAdmPlus: isAdmPlus(roles),
     isManager: isManager(roles),
     displayName,
     avatarUrl,

@@ -57,6 +57,9 @@ export function topRole(roles: Role[] | undefined): Role {
 export function isAuxPlus(roles: Role[]): boolean {
   return roles.some((r) => ROLE_RANK[r] >= ROLE_RANK.aux);
 }
+export function isAdmPlus(roles: Role[]): boolean {
+  return roles.some((r) => ROLE_RANK[r] >= ROLE_RANK.adm);
+}
 export function isManager(roles: Role[]): boolean {
   return roles.includes("manager");
 }

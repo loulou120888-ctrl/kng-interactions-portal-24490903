@@ -138,7 +138,7 @@ function EditInteractionDialog({
   );
 }
 
-function InteractionRow({ r, profiles, currentUserId }: { r: any; profiles: Record<string, string>; currentUserId: string }) {
+function InteractionRow({ r, profiles, currentUserId, isAdmPlus }: { r: any; profiles: Record<string, string>; currentUserId: string; isAdmPlus: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const [attendees, setAttendees] = useState<{ id: string; name: string }[]>([]);
   const [editOpen, setEditOpen] = useState(false);
@@ -147,6 +147,7 @@ function InteractionRow({ r, profiles, currentUserId }: { r: any; profiles: Reco
   const hasPoster = !!(r.poster_message || r.poster_image_url || r.f3_message);
   const authorName = profiles[r.author_id] ?? "—";
   const isAuthor = currentUserId === r.author_id;
+  const canEdit = isAuthor || isAdmPlus;
 
   async function loadAttendees() {
     if (loadedRef.current) return;
@@ -182,7 +183,7 @@ function InteractionRow({ r, profiles, currentUserId }: { r: any; profiles: Reco
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Badge variant="outline" className="text-[10px]">{new Date(r.created_at).toLocaleString()}</Badge>
-            {isAuthor && (
+            {canEdit && (
               <button
                 onClick={() => setEditOpen(true)}
                 className="rounded-md border border-border px-2 py-1 text-xs hover:bg-accent transition flex items-center gap-1 text-muted-foreground hover:text-foreground"
@@ -272,7 +273,7 @@ function InteractionRow({ r, profiles, currentUserId }: { r: any; profiles: Reco
 }
 
 function Interactions() {
-  const { user } = useAuth();
+  const { user, isAdmPlus } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [q, setQ] = useState("");
@@ -324,7 +325,7 @@ function Interactions() {
         <div className="divide-y divide-border">
           {filtered.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No interactions logged.</p>}
           {filtered.map((r) => (
-            <InteractionRow key={r.id} r={r} profiles={profiles} currentUserId={user?.id ?? ""} />
+            <InteractionRow key={r.id} r={r} profiles={profiles} currentUserId={user?.id ?? ""} isAdmPlus={isAdmPlus} />
           ))}
         </div>
       </Card>

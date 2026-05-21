@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Trophy, CheckCircle2, XCircle, Calendar, Users, Star, RotateCcw, AlertTriangle } from "lucide-react";
+import { Trophy, CheckCircle2, XCircle, Calendar, Users, Star, RotateCcw, AlertTriangle, PlusCircle, MinusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { type Period, PERIODS, getPeriodRange } from "./_portal.stats";
 
@@ -82,8 +82,10 @@ function ResetDialog({ open, onOpenChange, onConfirmed, title, description, warn
 }
 
 function Leaderboard() {
-  const { isManager } = useAuth();
+  const { isManager, isAdmPlus } = useAuth();
   const [period, setPeriod] = useState<Period>("week");
+  const [ptStaff, setPtStaff] = useState("");
+  const [ptAmount, setPtAmount] = useState("");
   const [pts, setPts] = useState<{ user_id: string; amount: number; awarded_at: string }[]>([]);
   const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [slots, setSlots] = useState<{ status: string; slot_start: string }[]>([]);
@@ -172,6 +174,22 @@ function Leaderboard() {
   const hitMin = dailyMinMembers.filter(m => m.hit).length;
 
   const currentPeriodLabel = PERIODS.find(p => p.id === period)?.label ?? "Selected period";
+
+  async function awardPoints() {
+    const amount = parseInt(ptAmount, 10);
+    if (!ptStaff) { toast.error("Select a staff member"); return; }
+    if (!ptAmount || isNaN(amount) || amount === 0) { toast.error("Enter a non-zero amount"); return; }
+    const { error } = await supabase.from("points_log").insert({
+      user_id: ptStaff,
+      amount,
+      awarded_at: new Date().toISOString(),
+    });
+    if (error) { toast.error(error.message); return; }
+    const name = profiles[ptStaff] ?? "Staff";
+    toast.success(`${amount > 0 ? "+" : ""}${amount} pts ${amount > 0 ? "awarded to" : "removed from"} ${name}`);
+    setPtAmount("");
+    fetchData();
+  }
 
   async function resetPoints() {
     const { error } = await supabase.from("points_log").delete().gte("awarded_at", "2000-01-01");
@@ -294,6 +312,49 @@ function Leaderboard() {
           ))}
         </div>
       </Card>
+
+      {isAdmPlus && (
+        <Card className="rounded-2xl bg-card/60 p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <PlusCircle className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold tracking-wide">Point Management</h2>
+            <Badge variant="outline" className="ml-auto text-[10px]">ADM+</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Manually add or remove points from any staff member. Use a negative number to deduct.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <select
+              value={ptStaff}
+              onChange={(e) => setPtStaff(e.target.value)}
+              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="">Select staff member…</option>
+              {Object.entries(profiles)
+                .sort((a, b) => a[1].localeCompare(b[1]))
+                .map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+            </select>
+            <Input
+              type="number"
+              placeholder="Amount (e.g. 5 or -3)"
+              value={ptAmount}
+              onChange={(e) => setPtAmount(e.target.value)}
+              className="w-full sm:w-44"
+            />
+            <Button
+              onClick={awardPoints}
+              className="flex-shrink-0 flex items-center gap-1.5"
+              variant={ptAmount && parseInt(ptAmount) < 0 ? "destructive" : "default"}
+            >
+              {ptAmount && parseInt(ptAmount) < 0
+                ? <><MinusCircle className="h-4 w-4" /> Remove pts</>
+                : <><PlusCircle className="h-4 w-4" /> Award pts</>}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {isManager && (
         <Card className="rounded-2xl bg-card/60 p-5 border-destructive/20">
