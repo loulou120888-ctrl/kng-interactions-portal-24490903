@@ -13,24 +13,26 @@ export const Route = createFileRoute("/_portal/spec-log")({ component: SpecLog }
 type Status = "hosting" | "in_rp" | "out_of_city";
 
 const OPTIONS: { value: Status; label: string; emoji: string; active: string }[] = [
-  { value: "hosting",      label: "Hosting",      emoji: "🎙️", active: "bg-green-500/15 text-green-400 border-green-500/40" },
-  { value: "in_rp",        label: "In RP",         emoji: "🎮", active: "bg-blue-500/15 text-blue-400 border-blue-500/40" },
-  { value: "out_of_city",  label: "Out of city",   emoji: "✈️", active: "bg-orange-500/15 text-orange-400 border-orange-500/40" },
+  { value: "hosting",     label: "Hosting",     emoji: "🎙️", active: "bg-green-500/15 text-green-400 border-green-500/40" },
+  { value: "in_rp",       label: "In RP",        emoji: "🎮", active: "bg-blue-500/15 text-blue-400 border-blue-500/40" },
+  { value: "out_of_city", label: "Out of city",  emoji: "✈️", active: "bg-orange-500/15 text-orange-400 border-orange-500/40" },
 ];
+
+type Profile = { id: string; display_name: string; city_id: string | null };
 
 function SpecLog() {
   const { isAuxPlus } = useAuth();
-  const [profiles, setProfiles] = useState<{ id: string; display_name: string }[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [statuses, setStatuses] = useState<Record<string, Status | null>>({});
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     supabase
       .from("profiles")
-      .select("id, display_name")
+      .select("id, display_name, city_id")
       .eq("deactivated", false)
       .order("display_name")
-      .then(({ data }) => setProfiles((data ?? []) as any));
+      .then(({ data }) => setProfiles((data ?? []) as Profile[]));
   }, []);
 
   if (!isAuxPlus) {
@@ -52,7 +54,8 @@ function SpecLog() {
 
     profiles.forEach(p => {
       const s = statuses[p.id] ?? null;
-      groups[s ?? "none"].push(p.display_name);
+      const label = p.city_id ? `${p.display_name} (${p.city_id})` : p.display_name;
+      groups[s ?? "none"].push(label);
     });
 
     const lines: string[] = [
@@ -102,7 +105,7 @@ function SpecLog() {
 
       <div className="rounded-xl border border-border bg-card/40 p-3 text-xs text-muted-foreground flex items-center gap-2">
         <span className="font-mono">Format preview:</span>
-        <span className="text-foreground/60">🎙️ Hosting: Alice · 🎮 In RP: Bob · ✈️ Out of city: Charlie</span>
+        <span className="text-foreground/60">🎙️ Hosting: Alice (12345) · 🎮 In RP: Bob (67890) · ✈️ Out of city: Charlie</span>
       </div>
 
       <Card className="rounded-2xl bg-card/60 p-3">
@@ -114,7 +117,12 @@ function SpecLog() {
             const current = statuses[p.id] ?? null;
             return (
               <div key={p.id} className="flex items-center gap-3 py-2.5 px-2">
-                <span className="flex-1 text-sm font-medium truncate">{p.display_name}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium">{p.display_name}</span>
+                  {p.city_id && (
+                    <span className="ml-2 text-xs text-muted-foreground font-mono">#{p.city_id}</span>
+                  )}
+                </div>
                 <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
                   {OPTIONS.map((opt) => (
                     <button
