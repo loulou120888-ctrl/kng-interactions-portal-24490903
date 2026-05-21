@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Plus, CheckCircle2, X, Layers, RefreshCw, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, CheckCircle2, X, Layers, RefreshCw, Trash2, Pencil } from "lucide-react";
 import {
   buildDaySlots,
   fmtSlot,
@@ -452,6 +452,18 @@ function SlotDetails({
   onLog: () => void;
 }) {
   const isClaimed = !!slot.claimed_by;
+  const [renaming, setRenaming] = useState(false);
+  const [newTitle, setNewTitle] = useState(slot.title);
+  const [renameBusy, setRenameBusy] = useState(false);
+
+  async function saveRename() {
+    if (!newTitle.trim()) { toast.error("Title can't be empty"); return; }
+    setRenameBusy(true);
+    const { error } = await supabase.from("schedule_slots").update({ title: newTitle.trim() }).eq("id", slot.id);
+    setRenameBusy(false);
+    if (error) toast.error(error.message);
+    else { toast.success("Event renamed"); setRenaming(false); onChanged(); }
+  }
 
   async function cancel() {
     const { error } = await supabase.from("schedule_slots").update({ status: "cancelled" }).eq("id", slot.id);
@@ -470,6 +482,34 @@ function SlotDetails({
 
   return (
     <div className="space-y-3 text-sm">
+      {canManage && slot.status !== "completed" && (
+        <div className="space-y-1.5">
+          {renaming ? (
+            <div className="flex gap-2">
+              <Input
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") saveRename(); if (e.key === "Escape") setRenaming(false); }}
+                autoFocus
+                className="h-8 text-sm"
+              />
+              <Button size="sm" className="h-8 px-3" onClick={saveRename} disabled={renameBusy || !newTitle.trim()}>
+                {renameBusy ? "…" : "Save"}
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => { setRenaming(false); setNewTitle(slot.title); }}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setNewTitle(slot.title); setRenaming(true); }}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition"
+            >
+              <Pencil className="h-3 w-3" /> Rename event
+            </button>
+          )}
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <span className={`h-2 w-2 rounded-full ${DEPT_BG[slot.department]}`} />
         <span>{DEPT_LABEL[slot.department]}</span>
