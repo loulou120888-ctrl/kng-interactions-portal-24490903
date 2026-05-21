@@ -24,6 +24,7 @@ import { Route as PortalSearchRouteImport } from './routes/_portal.search'
 import { Route as PortalScheduleRouteImport } from './routes/_portal.schedule'
 import { Route as PortalProfileRouteImport } from './routes/_portal.profile'
 import { Route as PortalPostersRouteImport } from './routes/_portal.posters'
+import { Route as PortalMentoringRouteImport } from './routes/_portal.mentoring'
 import { Route as PortalLeaderboardRouteImport } from './routes/_portal.leaderboard'
 import { Route as PortalInteractionsRouteImport } from './routes/_portal.interactions'
 import { Route as PortalHallRouteImport } from './routes/_portal.hall'
@@ -110,6 +111,11 @@ const PortalPostersRoute = PortalPostersRouteImport.update({
   path: '/posters',
   getParentRoute: () => PortalRoute,
 } as any)
+const PortalMentoringRoute = PortalMentoringRouteImport.update({
+  id: '/mentoring',
+  path: '/mentoring',
+  getParentRoute: () => PortalRoute,
+} as any)
 const PortalLeaderboardRoute = PortalLeaderboardRouteImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
@@ -181,6 +187,7 @@ export interface FileRoutesByFullPath {
   '/hall': typeof PortalHallRoute
   '/interactions': typeof PortalInteractionsRoute
   '/leaderboard': typeof PortalLeaderboardRoute
+  '/mentoring': typeof PortalMentoringRoute
   '/posters': typeof PortalPostersRoute
   '/profile': typeof PortalProfileRoute
   '/schedule': typeof PortalScheduleRouteWithChildren
@@ -208,6 +215,7 @@ export interface FileRoutesByTo {
   '/hall': typeof PortalHallRoute
   '/interactions': typeof PortalInteractionsRoute
   '/leaderboard': typeof PortalLeaderboardRoute
+  '/mentoring': typeof PortalMentoringRoute
   '/posters': typeof PortalPostersRoute
   '/profile': typeof PortalProfileRoute
   '/schedule': typeof PortalScheduleRouteWithChildren
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/_portal/hall': typeof PortalHallRoute
   '/_portal/interactions': typeof PortalInteractionsRoute
   '/_portal/leaderboard': typeof PortalLeaderboardRoute
+  '/_portal/mentoring': typeof PortalMentoringRoute
   '/_portal/posters': typeof PortalPostersRoute
   '/_portal/profile': typeof PortalProfileRoute
   '/_portal/schedule': typeof PortalScheduleRouteWithChildren
@@ -266,6 +275,7 @@ export interface FileRouteTypes {
     | '/hall'
     | '/interactions'
     | '/leaderboard'
+    | '/mentoring'
     | '/posters'
     | '/profile'
     | '/schedule'
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/hall'
     | '/interactions'
     | '/leaderboard'
+    | '/mentoring'
     | '/posters'
     | '/profile'
     | '/schedule'
@@ -321,6 +332,7 @@ export interface FileRouteTypes {
     | '/_portal/hall'
     | '/_portal/interactions'
     | '/_portal/leaderboard'
+    | '/_portal/mentoring'
     | '/_portal/posters'
     | '/_portal/profile'
     | '/_portal/schedule'
@@ -451,6 +463,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalPostersRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/_portal/mentoring': {
+      id: '/_portal/mentoring'
+      path: '/mentoring'
+      fullPath: '/mentoring'
+      preLoaderRoute: typeof PortalMentoringRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/_portal/leaderboard': {
       id: '/_portal/leaderboard'
       path: '/leaderboard'
@@ -566,6 +585,7 @@ interface PortalRouteChildren {
   PortalHallRoute: typeof PortalHallRoute
   PortalInteractionsRoute: typeof PortalInteractionsRoute
   PortalLeaderboardRoute: typeof PortalLeaderboardRoute
+  PortalMentoringRoute: typeof PortalMentoringRoute
   PortalPostersRoute: typeof PortalPostersRoute
   PortalProfileRoute: typeof PortalProfileRoute
   PortalScheduleRoute: typeof PortalScheduleRouteWithChildren
@@ -586,6 +606,7 @@ const PortalRouteChildren: PortalRouteChildren = {
   PortalHallRoute: PortalHallRoute,
   PortalInteractionsRoute: PortalInteractionsRoute,
   PortalLeaderboardRoute: PortalLeaderboardRoute,
+  PortalMentoringRoute: PortalMentoringRoute,
   PortalPostersRoute: PortalPostersRoute,
   PortalProfileRoute: PortalProfileRoute,
   PortalScheduleRoute: PortalScheduleRouteWithChildren,

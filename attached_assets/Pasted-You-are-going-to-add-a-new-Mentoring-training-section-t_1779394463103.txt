@@ -1,0 +1,203 @@
+You are going to add a new “Mentoring” training section to the KNG Interactions Portal website.
+
+IMPORTANT:
+This is NOT a staff application or interview system.
+
+This mentoring system is specifically for people who have ALREADY passed their staff interview and are now being trained/mentored into the team.
+
+The purpose is to teach new staff:
+
+* How the team operates
+* Expectations
+* Procedures
+* Professionalism
+* Hosting standards
+* Communication
+* Team responsibilities
+* Leadership basics
+* Event handling
+* Interaction etiquette
+* Internal systems
+* Common scenarios
+* Staff conduct
+
+Use the content from this Canva slideshow as the full training material source:
+
+https://www.canva.com/design/DAHF5u065dg/7_Z6eReZldF2Y7bNikzvKA/edit
+
+Convert the slideshow into a polished, interactive mentoring/training academy inside the website.
+
+GENERAL REQUIREMENTS:
+
+* Match the current website theme/style perfectly
+* Modern UI
+* Fully responsive
+* Clean animations/transitions
+* Professional appearance
+* Easy to navigate
+* Make it feel like a real internal staff academy
+
+MENTORING SECTION FEATURES:
+
+1. NEW NAVIGATION TAB
+   Add:
+
+* “Mentoring”
+
+Include:
+
+* Sidebar/navbar entry
+* Matching icon
+* Proper routing/navigation
+
+2. MENTORING HOME PAGE
+   Create a dashboard-style landing page with:
+
+* Welcome section
+* Explanation of the mentoring process
+* Progress tracking
+* Current module
+* Completion percentage
+* Continue learning button
+* Module cards
+* Completion badges/checkmarks
+
+3. LESSON SYSTEM
+   Turn the slideshow into structured learning modules.
+
+DO NOT simply paste slide text.
+
+Instead:
+
+* Organize information into lessons
+* Use cards, sections, tabs, callouts, and clean layouts
+* Break lessons into digestible sections
+* Add headings/subheadings
+* Add examples where useful
+* Preserve all important information from the slideshow
+
+Example module categories:
+
+* Introduction to Interactions
+* Team Expectations
+* Professionalism
+* Communication Standards
+* Hosting Events
+* Handling Situations
+* Escalation Procedures
+* Leadership & Initiative
+* Activity Expectations
+* Team Coordination
+* Common Mistakes
+* Best Practices
+
+Each lesson should include:
+
+* Title
+* Description
+* Estimated completion time
+* Progress state
+* Mark as complete button
+* Next/previous lesson navigation
+
+4. INTERACTIVE FEATURES
+   Add:
+
+* Expandable lesson sections
+* Progress saving
+* Animated transitions
+* Checklist completion
+* Continue where you left off
+* Highlight/notice boxes
+* Best practice sections
+* Common mistake warnings
+* Mentor tips
+
+5. QUIZ SYSTEM
+   At the end of mentoring, create a final quiz based on the training content.
+
+Quiz requirements:
+
+* 15–20 questions
+* Multiple choice
+* True/false
+* Scenario-based questions
+* Randomized order
+* Score tracking
+* Pass/fail system
+* Retry functionality
+* Review incorrect answers
+
+Passing score:
+
+* 80%
+
+After passing:
+
+* Show mentoring completion screen
+* Save completion status
+* Unlock “Mentored Staff” completion badge/status
+
+6. DATABASE / SUPABASE
+   If Supabase is connected:
+   Create and use tables for:
+
+* mentoring_modules
+* mentoring_lessons
+* mentoring_progress
+* mentoring_quizzes
+* mentoring_questions
+* mentoring_results
+
+Store:
+
+* User progress
+* Completed lessons
+* Quiz scores
+* Completion dates
+
+Add proper relationships and RLS policies if the project already uses them.
+
+7. ADMIN FEATURES
+   Allow management/admin roles to:
+
+* Add/edit lessons
+* Add/edit quiz questions
+* Reset progress
+* View completion stats
+* Track who completed mentoring
+
+8. DESIGN STYLE
+   The mentoring system should feel:
+
+* Professional
+* Premium
+* Interactive
+* Clean
+* Similar to a modern staff academy/LMS dashboard
+
+Use:
+
+* Modern cards
+* Progress bars/rings
+* Hover effects
+* Smooth animations
+* Icons
+* Section dividers
+* Elegant layouts
+
+9. IMPORTANT
+   The mentoring system is intended ONLY for accepted staff members who are already joining the team.
+
+The focus should be:
+
+* Training
+* Guidance
+* Learning procedures
+* Teaching expectations
+* Preparing them to operate correctly within Interactions
+
+NOT applications or recruitment.
+
+10. FINAL RESULT
+    Build a complete internal mentoring academy integrated into the existing KNG Interactions Portal using the Canva slideshow content as the training material source.

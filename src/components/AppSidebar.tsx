@@ -18,6 +18,7 @@ import {
   GraduationCap,
   BookOpen,
   ListChecks,
+  ScrollText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -44,7 +45,8 @@ const mainItems = [
   { title: "Leaderboard", url: "/leaderboard", icon: Trophy },
   { title: "Announcements", url: "/announcements", icon: Megaphone },
   { title: "Hall of Fame", url: "/hall", icon: ImageIcon },
-  { title: "Tutorial", url: "/tutorial", icon: GraduationCap },
+  { title: "Mentoring", url: "/mentoring", icon: GraduationCap },
+  { title: "Tutorial", url: "/tutorial", icon: ScrollText },
   { title: "Support & Commands", url: "/support", icon: BookOpen },
 ];
 
