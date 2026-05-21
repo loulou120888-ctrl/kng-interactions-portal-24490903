@@ -105,13 +105,14 @@ function Leaderboard() {
       ptsQuery = ptsQuery.gte("awarded_at", earliest.toISOString());
     }
 
+    const { from: slotFrom, to: slotTo } = getPeriodRange(period);
     const [{ data: ptsData }, { data: pf }, { data: slotsData }] = await Promise.all([
       ptsQuery,
       supabase.from("profiles").select("id, display_name"),
       supabase.from("schedule_slots")
         .select("status, slot_start")
-        .gte("slot_start", new Date(Date.now() - 7 * 86400_000).toISOString())
-        .lte("slot_start", new Date().toISOString()),
+        .gte("slot_start", slotFrom.toISOString())
+        .lte("slot_start", slotTo.toISOString()),
     ]);
 
     setPts((ptsData ?? []) as any);
@@ -213,7 +214,7 @@ function Leaderboard() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="rounded-2xl bg-card/60 p-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Events this week</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Events — {currentPeriodLabel}</p>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </div>
           <p className="text-3xl font-semibold">{completedSlots}</p>
@@ -225,7 +226,7 @@ function Leaderboard() {
 
         <Card className="rounded-2xl bg-card/60 p-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Missed slots (7d)</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Missed slots — {currentPeriodLabel}</p>
             <XCircle className="h-4 w-4 text-muted-foreground" />
           </div>
           <p className={`text-3xl font-semibold ${missedSlots > 0 ? "text-destructive" : "text-green-400"}`}>
