@@ -106,15 +106,22 @@ export function ScheduleView({
   scheduleType,
   title,
   allowedDepartments,
+  externalDate,
+  onExternalDateChange,
 }: {
   scheduleType: ScheduleType;
   title: string;
   allowedDepartments: Department[];
+  externalDate?: Date;
+  onExternalDateChange?: (d: Date) => void;
 }) {
   const { user, isAuxPlus } = useAuth();
   const isEntertainment = scheduleType === "entertainment";
+  const embedded = !!externalDate;
 
-  const [date, setDate] = useState<Date>(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
+  const [internalDate, setInternalDate] = useState<Date>(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
+  const date = externalDate ?? internalDate;
+  function setDate(d: Date) { setInternalDate(d); onExternalDateChange?.(d); }
   const [slots, setSlots] = useState<Slot[]>([]);
   const [crossBlockedIsos, setCrossBlockedIsos] = useState<Record<string, string>>({});
   const [profiles, setProfiles] = useState<Record<string, { display_name: string }>>({});
@@ -272,19 +279,43 @@ export function ScheduleView({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-sm text-muted-foreground">
-            30-minute slots — live updating · click to book or claim
-            {isEntertainment && !isAuxPlus && <span className="ml-1 text-muted-foreground/60">(AUX+ to book)</span>}
-          </p>
+      {!embedded && (
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            <p className="text-sm text-muted-foreground">
+              30-minute slots — live updating · click to book or claim
+              {isEntertainment && !isAuxPlus && <span className="ml-1 text-muted-foreground/60">(AUX+ to book)</span>}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="icon" onClick={() => shiftDay(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+            <div className="px-3 py-1.5 rounded-md border border-border text-sm">{date.toDateString()}</div>
+            <Button variant="outline" size="icon" onClick={() => shiftDay(1)}><ChevronRight className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="sm" onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setDate(d); }}>Today</Button>
+            {canBook && (
+              <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
+                <Layers className="h-4 w-4 mr-1.5" /> Bulk add
+              </Button>
+            )}
+            {isAuxPlus && (
+              <Button variant="outline" size="sm" onClick={() => setRecurringOpen(true)}>
+                <RefreshCw className="h-4 w-4 mr-1.5" /> Recurring
+              </Button>
+            )}
+            {isAuxPlus && (
+              <Button variant="outline" size="sm" onClick={() => setRandomizeOpen(true)}>
+                <Shuffle className="h-4 w-4 mr-1.5" /> Randomize Day
+              </Button>
+            )}
+          </div>
         </div>
+      )}
+      {embedded && (canBook || isAuxPlus) && (
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="icon" onClick={() => shiftDay(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-          <div className="px-3 py-1.5 rounded-md border border-border text-sm">{date.toDateString()}</div>
-          <Button variant="outline" size="icon" onClick={() => shiftDay(1)}><ChevronRight className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="sm" onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setDate(d); }}>Today</Button>
+          {isEntertainment && !isAuxPlus && (
+            <span className="text-xs text-muted-foreground/60">(AUX+ to book)</span>
+          )}
           {canBook && (
             <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
               <Layers className="h-4 w-4 mr-1.5" /> Bulk add
@@ -301,7 +332,7 @@ export function ScheduleView({
             </Button>
           )}
         </div>
-      </div>
+      )}
 
       <Card className="rounded-2xl bg-card/60 p-3">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
