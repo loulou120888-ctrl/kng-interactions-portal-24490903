@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, Save, User } from "lucide-react";
+import { Camera, Save, User, Palette, Check } from "lucide-react";
 import { toast } from "sonner";
+import { ACCENT_THEMES, applyAccentTheme, getSavedThemeId } from "@/lib/theme";
 
 export const Route = createFileRoute("/_portal/profile")({ component: ProfilePage });
 
@@ -19,7 +20,14 @@ function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(ctxAvatar);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [activeTheme, setActiveTheme] = useState(getSavedThemeId);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  function pickTheme(id: string) {
+    applyAccentTheme(id);
+    setActiveTheme(id);
+    toast.success("Theme updated");
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -92,7 +100,7 @@ function ProfilePage() {
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
           <User className="h-6 w-6" /> My Profile
         </h1>
-        <p className="text-sm text-muted-foreground">Update your display name, city ID, and profile picture.</p>
+        <p className="text-sm text-muted-foreground">Update your display name, city ID, profile picture, and appearance.</p>
       </div>
 
       <Card className="rounded-2xl bg-card/60 p-6 space-y-5">
@@ -150,6 +158,44 @@ function ProfilePage() {
         <Button onClick={save} disabled={saving} className="w-full">
           <Save className="h-4 w-4 mr-2" /> {saving ? "Saving…" : "Save changes"}
         </Button>
+      </Card>
+
+      <Card className="rounded-2xl bg-card/60 p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Palette className="h-4 w-4 text-primary" />
+          <h2 className="font-semibold">Accent Colour</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Changes the highlight colour throughout the entire portal. Saved to this device.
+        </p>
+        <div className="grid grid-cols-4 gap-3 sm:grid-cols-7">
+          {ACCENT_THEMES.map((theme) => (
+            <button
+              key={theme.id}
+              onClick={() => pickTheme(theme.id)}
+              title={theme.label}
+              className={`group flex flex-col items-center gap-1.5 rounded-xl border p-2.5 transition ${
+                activeTheme === theme.id
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:border-primary/50 hover:bg-accent/30"
+              }`}
+            >
+              <div
+                className="relative h-8 w-8 rounded-full shadow-sm"
+                style={{ background: theme.preview }}
+              >
+                {activeTheme === theme.id && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/25">
+                    <Check className="h-4 w-4 text-white" />
+                  </div>
+                )}
+              </div>
+              <span className={`text-[10px] font-medium ${activeTheme === theme.id ? "text-primary" : "text-muted-foreground"}`}>
+                {theme.label}
+              </span>
+            </button>
+          ))}
+        </div>
       </Card>
     </div>
   );
