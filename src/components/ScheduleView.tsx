@@ -88,6 +88,16 @@ function savePool(scheduleType: ScheduleType, pool: PoolItem[]) {
   localStorage.setItem(`kng_event_pool_${scheduleType}`, JSON.stringify(pool));
 }
 
+// When entertainment is booked, cancel any conflicting events_parties slots
+async function cancelConflictingEPSlots(isos: string[]) {
+  if (!isos.length) return;
+  await supabase.from("schedule_slots")
+    .update({ status: "cancelled" })
+    .eq("schedule_type", "events_parties")
+    .in("slot_start", isos)
+    .neq("status", "cancelled");
+}
+
 // Reference slot labels — use a fixed date so labels are timezone-stable
 const REF_DATE = (() => { const d = new Date(2024, 0, 1); d.setHours(0, 0, 0, 0); return d; })();
 const REF_SLOTS = buildDaySlots(REF_DATE);
@@ -195,6 +205,9 @@ export function ScheduleView({
             })
           )
         );
+        if (scheduleType === "entertainment") {
+          await cancelConflictingEPSlots(toInsert.map(t => localSlots[t.slot_index]));
+        }
         didInsert = true;
       }
     }
@@ -466,6 +479,9 @@ function BookSlot({ slotISO, scheduleType, allowedDepartments, onDone }: {
       notes: notes.trim() || null,
       booked_by: user.id,
     });
+    if (!error && scheduleType === "entertainment") {
+      await cancelConflictingEPSlots([slotISO]);
+    }
     setBusy(false);
     if (error) toast.error(error.message.includes("duplicate") ? "Slot already booked" : error.message);
     else { toast.success("Slot booked"); onDone(); }
@@ -652,6 +668,9 @@ function BulkAddDialog({
       title: title.trim(), notes: notes.trim() || null, booked_by: user.id,
     }));
     const { error } = await supabase.from("schedule_slots").insert(rows);
+    if (!error && scheduleType === "entertainment") {
+      await cancelConflictingEPSlots(Array.from(selected));
+    }
     setBusy(false);
     if (error) {
       toast.error(error.message.includes("duplicate") ? "One or more slots already booked — try selecting only free slots." : error.message);
@@ -923,6 +942,9 @@ function RandomizeDialog({
       return { schedule_type: scheduleType, slot_start: iso, department: pick.dept, title: pick.name, booked_by: userId };
     });
     const { error } = await supabase.from("schedule_slots").insert(inserts);
+    if (!error && scheduleType === "entertainment") {
+      await cancelConflictingEPSlots(emptySlots);
+    }
     setBusy(false);
     if (error) toast.error(error.message);
     else { toast.success(`Filled ${emptySlots.length} slot${emptySlots.length !== 1 ? "s" : ""} with random events`); onDone(); }
