@@ -19,6 +19,7 @@ import { Route as PortalTutorialRouteImport } from './routes/_portal.tutorial'
 import { Route as PortalSupportRouteImport } from './routes/_portal.support'
 import { Route as PortalStatsRouteImport } from './routes/_portal.stats'
 import { Route as PortalStaffRouteImport } from './routes/_portal.staff'
+import { Route as PortalSpecLogRouteImport } from './routes/_portal.spec-log'
 import { Route as PortalSearchRouteImport } from './routes/_portal.search'
 import { Route as PortalScheduleRouteImport } from './routes/_portal.schedule'
 import { Route as PortalProfileRouteImport } from './routes/_portal.profile'
@@ -82,6 +83,11 @@ const PortalStatsRoute = PortalStatsRouteImport.update({
 const PortalStaffRoute = PortalStaffRouteImport.update({
   id: '/staff',
   path: '/staff',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalSpecLogRoute = PortalSpecLogRouteImport.update({
+  id: '/spec-log',
+  path: '/spec-log',
   getParentRoute: () => PortalRoute,
 } as any)
 const PortalSearchRoute = PortalSearchRouteImport.update({
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof PortalProfileRoute
   '/schedule': typeof PortalScheduleRouteWithChildren
   '/search': typeof PortalSearchRoute
+  '/spec-log': typeof PortalSpecLogRoute
   '/staff': typeof PortalStaffRouteWithChildren
   '/stats': typeof PortalStatsRoute
   '/support': typeof PortalSupportRoute
@@ -205,6 +212,7 @@ export interface FileRoutesByTo {
   '/profile': typeof PortalProfileRoute
   '/schedule': typeof PortalScheduleRouteWithChildren
   '/search': typeof PortalSearchRoute
+  '/spec-log': typeof PortalSpecLogRoute
   '/staff': typeof PortalStaffRouteWithChildren
   '/stats': typeof PortalStatsRoute
   '/support': typeof PortalSupportRoute
@@ -233,6 +241,7 @@ export interface FileRoutesById {
   '/_portal/profile': typeof PortalProfileRoute
   '/_portal/schedule': typeof PortalScheduleRouteWithChildren
   '/_portal/search': typeof PortalSearchRoute
+  '/_portal/spec-log': typeof PortalSpecLogRoute
   '/_portal/staff': typeof PortalStaffRouteWithChildren
   '/_portal/stats': typeof PortalStatsRoute
   '/_portal/support': typeof PortalSupportRoute
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/schedule'
     | '/search'
+    | '/spec-log'
     | '/staff'
     | '/stats'
     | '/support'
@@ -287,6 +297,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/schedule'
     | '/search'
+    | '/spec-log'
     | '/staff'
     | '/stats'
     | '/support'
@@ -314,6 +325,7 @@ export interface FileRouteTypes {
     | '/_portal/profile'
     | '/_portal/schedule'
     | '/_portal/search'
+    | '/_portal/spec-log'
     | '/_portal/staff'
     | '/_portal/stats'
     | '/_portal/support'
@@ -402,6 +414,13 @@ declare module '@tanstack/react-router' {
       path: '/staff'
       fullPath: '/staff'
       preLoaderRoute: typeof PortalStaffRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/spec-log': {
+      id: '/_portal/spec-log'
+      path: '/spec-log'
+      fullPath: '/spec-log'
+      preLoaderRoute: typeof PortalSpecLogRouteImport
       parentRoute: typeof PortalRoute
     }
     '/_portal/search': {
@@ -551,6 +570,7 @@ interface PortalRouteChildren {
   PortalProfileRoute: typeof PortalProfileRoute
   PortalScheduleRoute: typeof PortalScheduleRouteWithChildren
   PortalSearchRoute: typeof PortalSearchRoute
+  PortalSpecLogRoute: typeof PortalSpecLogRoute
   PortalStaffRoute: typeof PortalStaffRouteWithChildren
   PortalStatsRoute: typeof PortalStatsRoute
   PortalSupportRoute: typeof PortalSupportRoute
@@ -570,6 +590,7 @@ const PortalRouteChildren: PortalRouteChildren = {
   PortalProfileRoute: PortalProfileRoute,
   PortalScheduleRoute: PortalScheduleRouteWithChildren,
   PortalSearchRoute: PortalSearchRoute,
+  PortalSpecLogRoute: PortalSpecLogRoute,
   PortalStaffRoute: PortalStaffRouteWithChildren,
   PortalStatsRoute: PortalStatsRoute,
   PortalSupportRoute: PortalSupportRoute,
