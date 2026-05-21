@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Calendar,
-  Music,
+  Balloon,
   ClipboardList,
   Trophy,
   Gift,
@@ -39,7 +39,7 @@ import { ROLE_LABEL } from "@/lib/portal";
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Events & Parties", url: "/schedule/events", icon: Calendar },
-  { title: "Entertainment", url: "/schedule/entertainment", icon: Music },
+  { title: "Entertainment", url: "/schedule/entertainment", icon: Balloon },
   { title: "Interactions", url: "/interactions", icon: ClipboardList },
   { title: "Posters & Promos", url: "/posters", icon: FileImage },
   { title: "Leaderboard", url: "/leaderboard", icon: Trophy },
