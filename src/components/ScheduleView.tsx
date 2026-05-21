@@ -482,7 +482,7 @@ function SlotDetails({
 
   return (
     <div className="space-y-3 text-sm">
-      {canManage && slot.status !== "completed" && (
+      {slot.status !== "completed" && (
         <div className="space-y-1.5">
           {renaming ? (
             <div className="flex gap-2">
