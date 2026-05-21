@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Plus, CheckCircle2, X, Layers, RefreshCw, Trash2, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, CheckCircle2, X, Layers, RefreshCw, Trash2, Pencil, Shuffle } from "lucide-react";
 import {
   buildDaySlots,
   fmtSlot,
@@ -49,6 +49,45 @@ interface RecurringTemplate {
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// ── Randomize Day pool ─────────────────────────────────────────────────────
+interface PoolItem { name: string; dept: Department; enabled: boolean; }
+
+const EP_DEFAULTS: Omit<PoolItem, "enabled">[] = [
+  { name: "Street Race",      dept: "events"  },
+  { name: "Truck Domination", dept: "events"  },
+  { name: "Fight Night",      dept: "events"  },
+  { name: "Car Meet",         dept: "events"  },
+  { name: "Purge",            dept: "events"  },
+  { name: "Hide & Seek",      dept: "events"  },
+  { name: "Cayo Drag Race",   dept: "events"  },
+  { name: "Quiz Night",       dept: "events"  },
+  { name: "Pool Party",       dept: "parties" },
+  { name: "Gang Wars",        dept: "parties" },
+  { name: "Treasure Hunt",    dept: "parties" },
+  { name: "Boat Race",        dept: "parties" },
+];
+
+const ENT_DEFAULTS: Omit<PoolItem, "enabled">[] = [
+  { name: "Battle Royale",    dept: "entertainment" },
+  { name: "DJ Set",           dept: "entertainment" },
+  { name: "Live Music",       dept: "entertainment" },
+  { name: "Open Mic",         dept: "entertainment" },
+];
+
+function getDefaultPool(scheduleType: ScheduleType): PoolItem[] {
+  const base = scheduleType === "entertainment" ? ENT_DEFAULTS : EP_DEFAULTS;
+  return base.map(x => ({ ...x, enabled: true }));
+}
+function loadPool(scheduleType: ScheduleType): PoolItem[] {
+  try {
+    const saved = localStorage.getItem(`kng_event_pool_${scheduleType}`);
+    return saved ? JSON.parse(saved) : getDefaultPool(scheduleType);
+  } catch { return getDefaultPool(scheduleType); }
+}
+function savePool(scheduleType: ScheduleType, pool: PoolItem[]) {
+  localStorage.setItem(`kng_event_pool_${scheduleType}`, JSON.stringify(pool));
+}
+
 // Reference slot labels — use a fixed date so labels are timezone-stable
 const REF_DATE = (() => { const d = new Date(2024, 0, 1); d.setHours(0, 0, 0, 0); return d; })();
 const REF_SLOTS = buildDaySlots(REF_DATE);
@@ -73,6 +112,7 @@ export function ScheduleView({
   const [logSlot, setLogSlot] = useState<Slot | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [recurringOpen, setRecurringOpen] = useState(false);
+  const [randomizeOpen, setRandomizeOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -219,6 +259,11 @@ export function ScheduleView({
           {isAuxPlus && (
             <Button variant="outline" size="sm" onClick={() => setRecurringOpen(true)}>
               <RefreshCw className="h-4 w-4 mr-1.5" /> Recurring
+            </Button>
+          )}
+          {isAuxPlus && (
+            <Button variant="outline" size="sm" onClick={() => setRandomizeOpen(true)}>
+              <Shuffle className="h-4 w-4 mr-1.5" /> Randomize Day
             </Button>
           )}
         </div>
@@ -379,6 +424,20 @@ export function ScheduleView({
         scheduleType={scheduleType}
         allowedDepartments={allowedDepartments}
       />
+
+      {isAuxPlus && user && (
+        <RandomizeDialog
+          open={randomizeOpen}
+          onOpenChange={setRandomizeOpen}
+          slotTimes={slotTimes}
+          slotMap={slotMap}
+          crossBlockedIsos={crossBlockedIsos}
+          scheduleType={scheduleType}
+          allowedDepartments={allowedDepartments}
+          userId={user.id}
+          onDone={() => { setRandomizeOpen(false); load(); }}
+        />
+      )}
     </div>
   );
 }
@@ -802,6 +861,168 @@ function RecurringDialog({
               ))}
             </div>
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RandomizeDialog({
+  open, onOpenChange, slotTimes, slotMap, crossBlockedIsos,
+  scheduleType, allowedDepartments, userId, onDone,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  slotTimes: string[];
+  slotMap: Record<string, Slot>;
+  crossBlockedIsos: Record<string, string>;
+  scheduleType: ScheduleType;
+  allowedDepartments: Department[];
+  userId: string;
+  onDone: () => void;
+}) {
+  const [pool, setPool] = useState<PoolItem[]>(() => loadPool(scheduleType));
+  const [newName, setNewName] = useState("");
+  const [newDept, setNewDept] = useState<Department>(allowedDepartments[0]);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (open) setPool(loadPool(scheduleType));
+  }, [open, scheduleType]);
+
+  useEffect(() => {
+    savePool(scheduleType, pool);
+  }, [pool, scheduleType]);
+
+  const emptySlots = slotTimes.filter(iso => !slotMap[iso] && !crossBlockedIsos[iso]);
+  const enabledItems = pool.filter(p => p.enabled);
+
+  function toggleItem(i: number) {
+    setPool(prev => prev.map((p, idx) => idx === i ? { ...p, enabled: !p.enabled } : p));
+  }
+  function changeDept(i: number, dept: Department) {
+    setPool(prev => prev.map((p, idx) => idx === i ? { ...p, dept } : p));
+  }
+  function addEvent() {
+    if (!newName.trim()) return;
+    setPool(prev => [...prev, { name: newName.trim(), dept: newDept, enabled: true }]);
+    setNewName("");
+  }
+  function removeItem(i: number) {
+    setPool(prev => prev.filter((_, idx) => idx !== i));
+  }
+  function resetDefaults() {
+    setPool(getDefaultPool(scheduleType));
+  }
+
+  async function randomize() {
+    if (!userId || emptySlots.length === 0 || enabledItems.length === 0) return;
+    setBusy(true);
+    const inserts = emptySlots.map(iso => {
+      const pick = enabledItems[Math.floor(Math.random() * enabledItems.length)];
+      return { schedule_type: scheduleType, slot_start: iso, department: pick.dept, title: pick.name, booked_by: userId };
+    });
+    const { error } = await supabase.from("schedule_slots").insert(inserts);
+    setBusy(false);
+    if (error) toast.error(error.message);
+    else { toast.success(`Filled ${emptySlots.length} slot${emptySlots.length !== 1 ? "s" : ""} with random events`); onDone(); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Shuffle className="h-4 w-4 text-primary" /> Randomize Day
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+
+          <div className="flex items-center justify-between rounded-xl border border-border bg-background/40 px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold">{emptySlots.length} empty slot{emptySlots.length !== 1 ? "s" : ""}</p>
+              <p className="text-xs text-muted-foreground">{enabledItems.length} event{enabledItems.length !== 1 ? "s" : ""} in pool</p>
+            </div>
+            <Button
+              onClick={randomize}
+              disabled={busy || emptySlots.length === 0 || enabledItems.length === 0}
+              size="sm"
+            >
+              <Shuffle className="h-3.5 w-3.5 mr-1.5" />
+              {busy ? "Filling…" : `Fill ${emptySlots.length} slot${emptySlots.length !== 1 ? "s" : ""}`}
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Event pool</Label>
+              <button onClick={resetDefaults} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition">
+                <RefreshCw className="h-3 w-3" /> Reset defaults
+              </button>
+            </div>
+            <div className="space-y-1 max-h-56 overflow-y-auto pr-0.5">
+              {pool.length === 0 && (
+                <p className="text-xs text-muted-foreground py-2 text-center">Pool is empty — add some events below.</p>
+              )}
+              {pool.map((item, i) => (
+                <div
+                  key={i}
+                  className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 transition ${
+                    item.enabled ? "border-border bg-background/40" : "border-border/40 bg-background/20 opacity-50"
+                  }`}
+                >
+                  <Checkbox checked={item.enabled} onCheckedChange={() => toggleItem(i)} />
+                  <span className="flex-1 text-sm truncate">{item.name}</span>
+                  {allowedDepartments.length > 1 ? (
+                    <Select value={item.dept} onValueChange={(v) => changeDept(i, v as Department)}>
+                      <SelectTrigger className="h-6 w-[110px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allowedDepartments.map(d => (
+                          <SelectItem key={d} value={d}>{DEPT_LABEL[d]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] flex-shrink-0">{DEPT_LABEL[item.dept]}</Badge>
+                  )}
+                  <button onClick={() => removeItem(i)} className="text-muted-foreground hover:text-destructive transition flex-shrink-0">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2 border-t border-border pt-3">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Add to pool</Label>
+            <div className="flex gap-2">
+              <Input
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addEvent()}
+                placeholder="Event name…"
+                className="h-8 text-sm flex-1"
+              />
+              {allowedDepartments.length > 1 && (
+                <Select value={newDept} onValueChange={v => setNewDept(v as Department)}>
+                  <SelectTrigger className="h-8 w-[120px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allowedDepartments.map(d => (
+                      <SelectItem key={d} value={d}>{DEPT_LABEL[d]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button size="sm" className="h-8 px-3" onClick={addEvent} disabled={!newName.trim()}>
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
         </div>
       </DialogContent>
     </Dialog>
