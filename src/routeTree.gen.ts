@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PortalRouteImport } from './routes/_portal'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalTutorialRouteImport } from './routes/_portal.tutorial'
+import { Route as PortalSupportRouteImport } from './routes/_portal.support'
 import { Route as PortalStatsRouteImport } from './routes/_portal.stats'
 import { Route as PortalStaffRouteImport } from './routes/_portal.staff'
 import { Route as PortalSearchRouteImport } from './routes/_portal.search'
@@ -65,6 +66,11 @@ const IndexRoute = IndexRouteImport.update({
 const PortalTutorialRoute = PortalTutorialRouteImport.update({
   id: '/tutorial',
   path: '/tutorial',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalSupportRoute = PortalSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => PortalRoute,
 } as any)
 const PortalStatsRoute = PortalStatsRouteImport.update({
@@ -168,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof PortalSearchRoute
   '/staff': typeof PortalStaffRouteWithChildren
   '/stats': typeof PortalStatsRoute
+  '/support': typeof PortalSupportRoute
   '/tutorial': typeof PortalTutorialRoute
   '/schedule/entertainment': typeof PortalScheduleEntertainmentRoute
   '/schedule/events': typeof PortalScheduleEventsRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/search': typeof PortalSearchRoute
   '/staff': typeof PortalStaffRouteWithChildren
   '/stats': typeof PortalStatsRoute
+  '/support': typeof PortalSupportRoute
   '/tutorial': typeof PortalTutorialRoute
   '/schedule/entertainment': typeof PortalScheduleEntertainmentRoute
   '/schedule/events': typeof PortalScheduleEventsRoute
@@ -218,6 +226,7 @@ export interface FileRoutesById {
   '/_portal/search': typeof PortalSearchRoute
   '/_portal/staff': typeof PortalStaffRouteWithChildren
   '/_portal/stats': typeof PortalStatsRoute
+  '/_portal/support': typeof PortalSupportRoute
   '/_portal/tutorial': typeof PortalTutorialRoute
   '/_portal/schedule/entertainment': typeof PortalScheduleEntertainmentRoute
   '/_portal/schedule/events': typeof PortalScheduleEventsRoute
@@ -244,6 +253,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/staff'
     | '/stats'
+    | '/support'
     | '/tutorial'
     | '/schedule/entertainment'
     | '/schedule/events'
@@ -268,6 +278,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/staff'
     | '/stats'
+    | '/support'
     | '/tutorial'
     | '/schedule/entertainment'
     | '/schedule/events'
@@ -293,6 +304,7 @@ export interface FileRouteTypes {
     | '/_portal/search'
     | '/_portal/staff'
     | '/_portal/stats'
+    | '/_portal/support'
     | '/_portal/tutorial'
     | '/_portal/schedule/entertainment'
     | '/_portal/schedule/events'
@@ -357,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/tutorial'
       fullPath: '/tutorial'
       preLoaderRoute: typeof PortalTutorialRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/_portal/support': {
+      id: '/_portal/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof PortalSupportRouteImport
       parentRoute: typeof PortalRoute
     }
     '/_portal/stats': {
@@ -500,6 +519,7 @@ interface PortalRouteChildren {
   PortalSearchRoute: typeof PortalSearchRoute
   PortalStaffRoute: typeof PortalStaffRouteWithChildren
   PortalStatsRoute: typeof PortalStatsRoute
+  PortalSupportRoute: typeof PortalSupportRoute
   PortalTutorialRoute: typeof PortalTutorialRoute
   PortalScheduleEntertainmentRoute: typeof PortalScheduleEntertainmentRoute
   PortalScheduleEventsRoute: typeof PortalScheduleEventsRoute
@@ -519,6 +539,7 @@ const PortalRouteChildren: PortalRouteChildren = {
   PortalSearchRoute: PortalSearchRoute,
   PortalStaffRoute: PortalStaffRouteWithChildren,
   PortalStatsRoute: PortalStatsRoute,
+  PortalSupportRoute: PortalSupportRoute,
   PortalTutorialRoute: PortalTutorialRoute,
   PortalScheduleEntertainmentRoute: PortalScheduleEntertainmentRoute,
   PortalScheduleEventsRoute: PortalScheduleEventsRoute,
