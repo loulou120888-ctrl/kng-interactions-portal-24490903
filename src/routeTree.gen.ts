@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SetupRouteImport } from './routes/setup'
+import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PortalRouteImport } from './routes/_portal'
 import { Route as IndexRouteImport } from './routes/index'
@@ -50,6 +51,11 @@ const SignupRoute = SignupRouteImport.update({
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
   path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetPasswordRoute = SetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -176,6 +182,7 @@ const PortalScheduleEntertainmentRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/set-password': typeof SetPasswordRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -204,6 +211,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/set-password': typeof SetPasswordRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -234,6 +242,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_portal': typeof PortalRouteWithChildren
   '/login': typeof LoginRoute
+  '/set-password': typeof SetPasswordRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -264,6 +273,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/set-password'
     | '/setup'
     | '/signup'
     | '/sitemap.xml'
@@ -292,6 +302,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/set-password'
     | '/setup'
     | '/signup'
     | '/sitemap.xml'
@@ -321,6 +332,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_portal'
     | '/login'
+    | '/set-password'
     | '/setup'
     | '/signup'
     | '/sitemap.xml'
@@ -351,6 +363,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PortalRoute: typeof PortalRouteWithChildren
   LoginRoute: typeof LoginRoute
+  SetPasswordRoute: typeof SetPasswordRoute
   SetupRoute: typeof SetupRoute
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -377,6 +390,13 @@ declare module '@tanstack/react-router' {
       path: '/setup'
       fullPath: '/setup'
       preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/set-password': {
+      id: '/set-password'
+      path: '/set-password'
+      fullPath: '/set-password'
+      preLoaderRoute: typeof SetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -625,6 +645,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PortalRoute: PortalRouteWithChildren,
   LoginRoute: LoginRoute,
+  SetPasswordRoute: SetPasswordRoute,
   SetupRoute: SetupRoute,
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,

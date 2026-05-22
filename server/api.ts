@@ -52,14 +52,12 @@ async function getCallerInfo(authHeader: string | undefined): Promise<{ userId: 
   return { userId: user.id, topRole };
 }
 
-function generatePassword(): string {
-  // 12 chars, no ambiguous characters (0/O, l/1/I) — easy to relay verbally
-  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  let pass = "";
-  for (let i = 0; i < 12; i++) {
-    pass += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return pass;
+function generateLoginCode(): string {
+  // 12 uppercase chars + digits (no ambiguous 0/O, 1/I/L), displayed as XXXX-XXXX-XXXX
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  let raw = "";
+  for (let i = 0; i < 12; i++) raw += chars[Math.floor(Math.random() * chars.length)];
+  return `${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}`;
 }
 
 app.post("/api/admin/reset-password", async (req, res) => {
@@ -82,9 +80,9 @@ app.post("/api/admin/reset-password", async (req, res) => {
       return;
     }
 
-    const newPassword = generatePassword();
+    const loginCode = generateLoginCode();
 
-    // Update via Supabase Admin Auth REST API
+    // Set password + flag user as needing a forced password reset after first login
     const updateRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${targetUserId}`, {
       method: "PUT",
       headers: {
@@ -92,17 +90,20 @@ app.post("/api/admin/reset-password", async (req, res) => {
         apikey: SERVICE_ROLE_KEY,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ password: newPassword }),
+      body: JSON.stringify({
+        password: loginCode,
+        user_metadata: { force_password_reset: true },
+      }),
     });
 
     if (!updateRes.ok) {
       const body = await updateRes.json().catch(() => ({})) as { message?: string };
-      res.status(500).json({ error: body.message ?? "Failed to update password" });
+      res.status(500).json({ error: body.message ?? "Failed to generate login code" });
       return;
     }
 
-    console.log(`[API] Password reset for user ${targetUserId} by manager ${caller.userId}`);
-    res.json({ password: newPassword });
+    console.log(`[API] One-time login code generated for user ${targetUserId} by manager ${caller.userId}`);
+    res.json({ password: loginCode });
   } catch (err: any) {
     console.error("[API] reset-password error:", err);
     res.status(500).json({ error: err?.message ?? "Unknown error" });

@@ -246,7 +246,7 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
   }
 
   async function resetPassword() {
-    if (!confirm(`Generate a new password for ${staff.display_name}? Their current password will stop working immediately.`)) return;
+    if (!confirm(`Generate a one-time login code for ${staff.display_name}?\n\nTheir current password will stop working immediately. They will be required to set a new password after signing in with this code.`)) return;
     setResetBusy(true);
     setNewPassword(null);
     setCopied(false);
@@ -265,10 +265,10 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
       });
       const body = await res.json() as { password?: string; error?: string };
       if (!res.ok || !body.password) {
-        toast.error(body.error ?? "Reset failed");
+        toast.error(body.error ?? "Failed to generate login code");
       } else {
         setNewPassword(body.password);
-        toast.success("Password reset — share it securely with the staff member");
+        toast.success("Login code generated — share it securely");
       }
     } catch (e: any) {
       toast.error(e?.message ?? "Network error");
@@ -347,9 +347,9 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium flex items-center gap-1.5">
-                    <KeyRound className="h-3.5 w-3.5" /> Password reset
+                    <KeyRound className="h-3.5 w-3.5" /> One-time login code
                   </p>
-                  <p className="text-xs text-muted-foreground">Generates a new random password instantly.</p>
+                  <p className="text-xs text-muted-foreground">Staff will be forced to set a new password on next sign-in.</p>
                 </div>
                 <Button
                   variant="outline"
@@ -357,13 +357,15 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
                   onClick={resetPassword}
                   disabled={resetBusy}
                 >
-                  {resetBusy ? "Resetting…" : "Reset password"}
+                  {resetBusy ? "Generating…" : "Generate code"}
                 </Button>
               </div>
 
               {newPassword && (
                 <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
-                  <p className="text-xs text-muted-foreground">New password — share this securely then it won't be shown again:</p>
+                  <p className="text-xs text-muted-foreground">
+                    Share this code securely — it works once, then expires after they set a new password.
+                  </p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 rounded-lg bg-background border border-border px-3 py-2 text-sm font-mono tracking-widest select-all">
                       {newPassword}

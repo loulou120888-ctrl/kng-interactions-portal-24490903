@@ -70,6 +70,12 @@ function LoginPage() {
         setError("Your account has been deactivated. Contact a manager.");
         return;
       }
+
+      // If the account has a forced password reset (one-time login code was used), send to set-password
+      if (data.user.user_metadata?.force_password_reset) {
+        navigate({ to: "/set-password" });
+        return;
+      }
     }
     // Navigation is handled by the useEffect above once onAuthStateChange sets the user
   }

@@ -6,14 +6,18 @@ import { useAuth } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
 
 export function PortalLayout({ children }: { children?: ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, session } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
-  }, [user, loading, navigate]);
+  const forceReset = session?.user?.user_metadata?.force_password_reset;
 
-  if (loading || !user) {
+  useEffect(() => {
+    if (loading) return;
+    if (!user) { navigate({ to: "/login" }); return; }
+    if (forceReset) { navigate({ to: "/set-password" }); }
+  }, [user, loading, forceReset, navigate]);
+
+  if (loading || !user || forceReset) {
     return (
       <div className="grid min-h-screen place-items-center">
         <div className="h-8 w-8 animate-pulse rounded-full bg-primary/40" />
