@@ -106,7 +106,7 @@ function CommentSection({
       body: draft.trim(),
     }).select("id, user_id, body, created_at").single();
     setPosting(false);
-    if (error) { toast.error("Failed to post comment"); return; }
+    if (error) { toast.error(`Failed to post comment: ${error.message}`); return; }
     setDraft("");
     setComments(prev => [...prev, data]);
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
