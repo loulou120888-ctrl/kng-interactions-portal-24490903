@@ -61,14 +61,17 @@ function generateLoginCode(): string {
 }
 
 app.post("/api/admin/reset-password", async (req, res) => {
+  console.log("[API] reset-password: request received");
   try {
     const caller = await getCallerInfo(req.headers.authorization);
+    console.log("[API] reset-password: caller =", caller ? `${caller.userId} role=${caller.topRole}` : "null");
     if (!caller || caller.topRole !== "manager") {
       res.status(403).json({ error: "Manager access required" });
       return;
     }
 
     const { targetUserId } = req.body as { targetUserId?: string };
+    console.log("[API] reset-password: targetUserId =", targetUserId);
     if (!targetUserId) {
       res.status(400).json({ error: "targetUserId is required" });
       return;
@@ -81,6 +84,7 @@ app.post("/api/admin/reset-password", async (req, res) => {
     }
 
     const loginCode = generateLoginCode();
+    console.log("[API] reset-password: generated code, calling Supabase admin update...");
 
     // Set password + flag user as needing a forced password reset after first login
     const updateRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${targetUserId}`, {
@@ -96,9 +100,14 @@ app.post("/api/admin/reset-password", async (req, res) => {
       }),
     });
 
+    console.log("[API] reset-password: Supabase update status =", updateRes.status);
+
     if (!updateRes.ok) {
-      const body = await updateRes.json().catch(() => ({})) as { message?: string };
-      res.status(500).json({ error: body.message ?? "Failed to generate login code" });
+      const errText = await updateRes.text().catch(() => "");
+      let errMsg = "Failed to generate login code";
+      try { errMsg = (JSON.parse(errText) as { message?: string }).message ?? errMsg; } catch { errMsg = errText || errMsg; }
+      console.error("[API] reset-password: Supabase error:", errText);
+      res.status(500).json({ error: errMsg });
       return;
     }
 

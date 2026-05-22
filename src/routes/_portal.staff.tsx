@@ -263,9 +263,13 @@ function EditStaffDialog({ staff, open, onOpenChange, canManager, actorTopRole, 
         },
         body: JSON.stringify({ targetUserId: staff.id }),
       });
-      const body = await res.json() as { password?: string; error?: string };
+      let body: { password?: string; error?: string } = {};
+      try {
+        const text = await res.text();
+        if (text) body = JSON.parse(text);
+      } catch { /* empty or non-JSON — body stays {} */ }
       if (!res.ok || !body.password) {
-        toast.error(body.error ?? "Failed to generate login code");
+        toast.error(body.error ?? `Server error (HTTP ${res.status}) — check Admin API logs`);
       } else {
         setNewPassword(body.password);
         toast.success("Login code generated — share it securely");
