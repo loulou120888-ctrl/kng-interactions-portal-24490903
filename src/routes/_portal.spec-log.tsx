@@ -10,14 +10,16 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_portal/spec-log")({ component: SpecLog });
 
-type Status = "hosting" | "in_rp" | "out_of_city";
+type Status = "hosting" | "in_rp" | "out_of_city" | "staff_work" | "afk";
 type Department = "events" | "parties" | "entertainment";
 type TeamFilter = Department | "all";
 
 const OPTIONS: { value: Status; label: string; emoji: string; active: string }[] = [
-  { value: "hosting",     label: "Hosting",     emoji: "🎙️", active: "bg-green-500/15 text-green-400 border-green-500/40" },
-  { value: "in_rp",       label: "In RP",        emoji: "🎮", active: "bg-blue-500/15 text-blue-400 border-blue-500/40" },
-  { value: "out_of_city", label: "Out of city",  emoji: "✈️", active: "bg-orange-500/15 text-orange-400 border-orange-500/40" },
+  { value: "hosting",     label: "Hosting",      emoji: "🎙️", active: "bg-green-500/15 text-green-400 border-green-500/40" },
+  { value: "in_rp",       label: "In RP",         emoji: "🎮", active: "bg-blue-500/15 text-blue-400 border-blue-500/40" },
+  { value: "out_of_city", label: "Out of city",   emoji: "✈️", active: "bg-orange-500/15 text-orange-400 border-orange-500/40" },
+  { value: "staff_work",  label: "Staff work",    emoji: "🛠️", active: "bg-purple-500/15 text-purple-400 border-purple-500/40" },
+  { value: "afk",         label: "AFK",           emoji: "💤", active: "bg-zinc-500/15 text-zinc-400 border-zinc-500/40" },
 ];
 
 const TEAMS: { value: TeamFilter; label: string; emoji: string }[] = [
@@ -68,7 +70,7 @@ function SpecLog() {
 
   async function copyList() {
     const groups: Record<Status | "none", string[]> = {
-      hosting: [], in_rp: [], out_of_city: [], none: [],
+      hosting: [], in_rp: [], out_of_city: [], staff_work: [], afk: [], none: [],
     };
 
     visible.forEach(p => {
@@ -83,10 +85,20 @@ function SpecLog() {
       "─".repeat(38),
     ];
 
-    if (groups.hosting.length)     lines.push(`🎙️  Hosting: ${groups.hosting.join(", ")}`);
-    if (groups.in_rp.length)       lines.push(`🎮  In RP: ${groups.in_rp.join(", ")}`);
-    if (groups.out_of_city.length) lines.push(`✈️  Out of city: ${groups.out_of_city.join(", ")}`);
-    if (groups.none.length)        lines.push(`⚪  No status: ${groups.none.join(", ")}`);
+    const sections: [string[], string][] = [
+      [groups.hosting,     "🎙️  Hosting"],
+      [groups.in_rp,       "🎮  In RP"],
+      [groups.out_of_city, "✈️  Out of city"],
+      [groups.staff_work,  "🛠️  Staff work"],
+      [groups.afk,         "💤  AFK"],
+      [groups.none,        "⚪  No status"],
+    ];
+
+    for (const [members, header] of sections) {
+      if (!members.length) continue;
+      lines.push(header);
+      members.forEach(name => lines.push(`    ${name}`));
+    }
 
     await navigator.clipboard.writeText(lines.join("\n"));
     setCopied(true);
