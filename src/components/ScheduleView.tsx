@@ -1081,10 +1081,52 @@ function RandomizeDialog({
   async function randomize() {
     if (!userId || emptySlots.length === 0 || enabledItems.length === 0) return;
     setBusy(true);
-    const inserts = emptySlots.map(iso => {
-      const pick = enabledItems[Math.floor(Math.random() * enabledItems.length)];
-      return { schedule_type: scheduleType, slot_start: iso, department: pick.dept, title: pick.name, booked_by: userId };
+
+    // Sort empty slots chronologically so we assign in time order
+    const sortedEmpty = [...emptySlots].sort();
+
+    // Events already placed in filled slots today — treat as used at position -1
+    // so they still count against repeats but rank below events placed further back
+    const alreadyUsedNames = new Set(Object.values(slotMap).map(s => s.title));
+
+    // lastUsedAt: slot-index within sortedEmpty when this event was last placed.
+    // -Infinity = never used anywhere today → highest priority
+    // -1        = already exists in a filled slot → lower priority than never-used
+    const lastUsedAt = new Map<string, number>(
+      enabledItems.map(item => [
+        item.name,
+        alreadyUsedNames.has(item.name) ? -1 : -Infinity,
+      ])
+    );
+
+    const inserts = sortedEmpty.map((iso, slotIdx) => {
+      // Score each event: higher gap = higher priority
+      // gap = Infinity for never-used, otherwise (slotIdx - lastUsedAt)
+      const scored = enabledItems.map(item => {
+        const lu = lastUsedAt.get(item.name)!;
+        const gap = lu === -Infinity ? Infinity : slotIdx - lu;
+        return { item, gap };
+      });
+
+      // Find the best (maximum) gap
+      const bestGap = Math.max(...scored.map(s => s.gap));
+
+      // All candidates tied at bestGap — pick one randomly so identical-gap
+      // events don't always resolve in the same order
+      const candidates = scored.filter(s => s.gap === bestGap);
+      const { item: pick } = candidates[Math.floor(Math.random() * candidates.length)];
+
+      lastUsedAt.set(pick.name, slotIdx);
+
+      return {
+        schedule_type: scheduleType,
+        slot_start: iso,
+        department: pick.dept,
+        title: pick.name,
+        booked_by: userId,
+      };
     });
+
     const { error } = await supabase.from("schedule_slots").insert(inserts);
     if (!error && scheduleType === "entertainment") {
       await cancelConflictingEPSlots(emptySlots);
